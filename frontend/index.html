@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UIU Dock - Resource Center, Study Rooms & Help Desk</title>
+<meta name="description" content="UIU Dock — one dock for verified course resources, scheduled study rooms and course-wise help chats.">
+<meta name="theme-color" content="#A63608">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css"></head><body>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span></div>
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
+<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html" class="active" aria-current="page">Home</a><a href="resources.html">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="admin.html">Admin</a><a href="login.html" id="loginLink">Login</a></nav></div></header>
+<main class="wrap" id="main">
+<div class="hero" id="hero"><div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div><div class="hero-spot" id="heroSpot"></div>
+<div><h1>One dock for <em>resources, rooms &amp; help.</em></h1>
+<p>A database-driven course resource center, online group study and course-wise help platform. Browse verified materials, join scheduled study rooms, and discuss in persistent per-course group chats.</p>
+<div class="hero-cta"><a class="btn" href="resources.html">Browse Resources →</a> <a class="btn light" href="rooms.html">Join Study Room</a></div>
+<div class="hero-meta"><span class="live-dot" aria-hidden="true"></span><span>Live demo · Team Baseline · Section H · Summer 2026</span><span class="pill"><i></i>Synthetic data</span></div></div>
+<div class="hero-card"><h2><span class="live-dot" aria-hidden="true"></span>Live courses — synthetic demo</h2><div id="heroStats"></div><div class="demo-note">Synthetic demo data — no real UIU courses. First run? Start with Resources → join a Room → ask in Help Desk.</div></div></div>
+<h2 data-reveal>At a glance</h2>
+<div class="stat-grid" id="stats" data-reveal></div>
+<h2 data-reveal>Three pillars</h2>
+<div class="grid3">
+<div class="card p-hub" data-reveal><div class="card-head"><div class="icon-badge ib-hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><h3>Resource Hub</h3></div><p>Notes, slides, past questions, labs, links — categorized, versioned, rated, download-tracked.</p><div class="mini-row"><span class="tag">Verified</span><span class="tag">Versioned</span><span class="tag">Rated</span></div><a class="btn small" href="resources.html">Open Hub →</a></div>
+<div class="card p-room" data-reveal><div class="card-head"><div class="icon-badge ib-room"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3>Study Rooms</h3></div><p>Course-specific virtual rooms with schedule, capacity, host controls, attendance.</p><div class="mini-row"><span class="tag">Scheduled</span><span class="tag">Capacity</span><span class="tag">Hosted</span></div><a class="btn small" href="rooms.html">Find Rooms →</a></div>
+<div class="card p-help" data-reveal><div class="card-head"><div class="icon-badge ib-help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>Help Desk</h3></div><p>Select a course → enter its persistent group chat. Real-time, pinned, searchable.</p><div class="mini-row"><span class="tag">Persistent</span><span class="tag">Searchable</span><span class="tag">Pinned</span></div><a class="btn small" href="help-desk.html">Ask Help →</a></div>
+</div></main>
+<div class="footer">UIU Dock • Database Management System Lab • Team Baseline • Summer 2026</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/seed.js"></script><script src="js/store.js"></script>
+<script>document.documentElement.classList.add('js');
+const db=getDB();
+document.getElementById('stats').innerHTML=`<div class="stat"><b>${db.resources.length}</b><small>Resources</small></div><div class="stat"><b>${db.rooms.length}</b><small>Study Rooms</small></div><div class="stat"><b>${db.courses.length}</b><small>Courses</small></div><div class="stat"><b>${Object.values(db.msgs).flat().length}</b><small>Help Messages</small></div>`;
+document.getElementById('heroStats').innerHTML=db.courses.slice(0,4).map(c=>`<div class="hero-course-row"><b>${c.code}</b> <span class="meta">${c.title}</span></div>`).join('')+`<div class="hero-cta-row"><a class="btn small" href="help-desk.html">Enter Course Chat →</a></div>`;
+if(db.user)document.getElementById('loginLink').textContent='Hi, '+db.user.name;
+const hero=document.getElementById('hero'),spot=document.getElementById('heroSpot');
+if(hero&&spot&&matchMedia('(pointer:fine)').matches){hero.addEventListener('pointermove',e=>{const r=hero.getBoundingClientRect();spot.style.setProperty('--mx',((e.clientX-r.left)/r.width*100)+'%');spot.style.setProperty('--my',((e.clientY-r.top)/r.height*100)+'%');});}
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.12});
+document.querySelectorAll('[data-reveal]').forEach(el=>io.observe(el));</script>
+</body></html>

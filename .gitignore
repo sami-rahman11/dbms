@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+bower_components/
+
+# Env & secrets (never commit real credentials)
+.env
+.env.*
+!.env.example
+
+# Python tooling
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Agent / scratch (local-only)
+.impeccable/
+archive/
+*.log

@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Study Rooms - UIU Dock</title>
+<meta name="description" content="Course-specific virtual study rooms with schedule and capacity.">
+<meta name="theme-color" content="#A63608">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css"></head><body class="pg-rooms">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span></div>
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
+<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html">Resources</a><a href="rooms.html" class="active" aria-current="page">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="admin.html">Admin</a><a href="login.html">Login</a></nav></div></header>
+<main class="wrap" id="main"><div class="page-head"><div class="icon-badge ib-room"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><h1>Study Rooms</h1><p class="meta">Course-specific rooms with schedule &amp; capacity.</p></div><div class="hero-cta"><button class="btn" onclick="guardRoom()">+ Create Room</button></div></div>
+<div class="toolbar" data-reveal><input id="q" placeholder="Search rooms, course, host..." aria-label="Search rooms"><select id="fC" aria-label="Filter by course"><option value="">All Courses</option></select><button class="btn" onclick="guardRoom()">+ Create Room</button></div>
+<div class="rooms-grid" id="grid"></div><div id="empty"></div></main>
+<div class="modal-bg" id="m"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="rmTitle"><h2 id="rmTitle">Create Study Room</h2>
+<label for="nT">Topic *</label><input id="nT"><div class="err" id="eT"></div>
+<label for="nC">Course</label><select id="nC"></select>
+<label for="nW">Schedule * (e.g. Today 7:00 PM)</label><input id="nW" placeholder="Today 7:00 PM"><div class="err" id="eW"></div>
+<label for="nCap">Capacity (2–50) *</label><input id="nCap" type="number" value="8" min="2" max="50"><div class="err" id="eC"></div>
+<label for="nL">Meeting link (optional, validated)</label><input id="nL" placeholder="https://meet.link/..."><div class="err" id="eL"></div>
+<label for="nBy">Host name *</label><input id="nBy" placeholder="e.g. Sami Rahman" autocomplete="name"><div class="err" id="eBy"></div>
+<div class="modal-actions"><button class="btn" onclick="doCreate()">Create</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div></div></div>
+<div class="footer">UIU Dock • Database Management System Lab • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/seed.js"></script><script src="js/store.js"></script>
+<script>document.documentElement.classList.add('js');
+let db=getDB();const fc=document.getElementById('fC'),nc=document.getElementById('nC');
+db.courses.forEach(c=>{fc.innerHTML+=`<option>${c.code}</option>`;nc.innerHTML+=`<option>${c.code}</option>`;});
+function render(){const q=document.getElementById('q').value.toLowerCase(),f=fc.value;
+ const guest=!currentUser();
+ let list=db.rooms.filter(r=>!f||r.c===f);if(q)list=list.filter(r=>(r.t+r.c+r.host).toLowerCase().includes(q));
+ document.getElementById('grid').innerHTML=list.map(r=>{const full=r.joined>=r.cap;const empty=r.joined<=0;
+ const link=guest?'<span class="meta">🔒 Members only — log in to reveal link</span>':(r.link?`<a class="room-link" href="${escapeHTML(linkHref(r.link))}" target="_blank" rel="noopener">Join link</a>`:'<span class="meta">no link yet</span>');
+ return `<div class="card p-room" data-reveal><span class="tag">${escapeHTML(r.c)}</span><h3>${escapeHTML(r.t)}</h3><div class="meta">Host ${escapeHTML(r.host)} • ${escapeHTML(r.when)} • ${escapeHTML(r.joined)}/${escapeHTML(r.cap)} joined • ${link}</div><div class="actions"><button class="btn small" ${full?'disabled':''} onclick="join(${r.id})">${full?'Full / Waitlist':'Join Room'}</button><button class="btn small ghost" ${empty?'disabled':''} onclick="leave(${r.id})">Leave</button><button class="btn small ghost" onclick="repRoom(${r.id})">Report</button></div></div>`;}).join('');
+ document.getElementById('empty').innerHTML=list.length?'':`<div class="empty"><h2>No rooms for this filter</h2><p>Be the first to host one — pick a course and schedule.</p><button class="btn" onclick="guardRoom()">+ Create Room</button></div>`;
+ watchReveals();}
+document.getElementById('q').oninput=render;fc.onchange=render;
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
+function watchReveals(){document.querySelectorAll('[data-reveal]:not(.in)').forEach(el=>io.observe(el));}
+watchReveals();render();
+function doCreate(){const t=document.getElementById('nT').value.trim(),w=document.getElementById('nW').value.trim(),cap=+document.getElementById('nCap').value,l=document.getElementById('nL').value.trim(),host=document.getElementById('nBy').value.trim();
+ showErr('eT',t?'':'Topic is required.');showErr('eW',w?'':'Schedule is required.');
+ showErr('eC',(cap>=2&&cap<=50)?'':'Capacity must be 2–50.');showErr('eL',l&&!validURL(l)?'Enter a valid URL or leave blank.':'');showErr('eBy',host?'':'Enter the host name.');
+ if(!t||!w||!host||!(cap>=2&&cap<=50)||(l&&!validURL(l)))return;
+ if(isSuspended(host)){toast('That name is suspended — creation blocked.');return;}
+ db.rooms.unshift({id:Date.now(),c:nc.value,t,host,when:w,cap,joined:1,link:l||'meet.link/new'});
+ saveDB(db);closeModal();render();toast('Room created');}
+function guardRoom(){if(requireAuth('Create an account to host study rooms'))openModal();}
+function join(id){if(!requireAuth('Create an account to join study rooms'))return;const r=db.rooms.find(x=>x.id===id);if(r.joined<r.cap){r.joined++;saveDB(db);render();toast('Joined — attendance recorded');}else toast('Room full — added to waitlist (demo)');}
+function leave(id){const r=db.rooms.find(x=>x.id===id);if(r.joined>0)r.joined--;saveDB(db);render();}
+function repRoom(id){if(!requireAuth('Create an account to report content'))return;const r=db.rooms.find(x=>x.id===id);const reason=prompt('Report room "'+r.t+'" — reason?','Spam / wrong course / stale');if(reason===null)return;
+ if(fileReport('room',{refId:id,label:r.t+' ('+r.c+')',reason:reason||'No reason given'}))toast('Reported — staff will review');}
+</script></body></html>

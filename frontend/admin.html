@@ -1,0 +1,265 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Staff Console - UIU Dock</title>
+<meta name="description" content="Separate staff console for UIU Dock moderation.">
+<meta name="theme-color" content="#061A4D">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css"></head><body class="pg-admin">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span><span class="staff-tag">Staff</span></div>
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
+<nav class="nav" id="mainNav" aria-label="Staff"><a href="index.html">View site</a><a href="admin.html" class="active" aria-current="page">Console</a><a href="#" onclick="doLogout();return false;">Logout</a></nav></div></header>
+<main class="wrap" id="main">
+<div id="gate"></div>
+<div id="dash" style="display:none">
+<div class="page-head"><div class="icon-badge ib-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><h1>Staff Console</h1><p class="meta" id="who"></p></div></div>
+<div class="admin-tabs" role="tablist" aria-label="Moderation areas">
+<button data-tab="overview" class="active" onclick="tab('overview')">Overview</button>
+<button data-tab="resources" onclick="tab('resources')">Resources <span class="count" id="cRes">0</span></button>
+<button data-tab="rooms" onclick="tab('rooms')">Study Rooms <span class="count" id="cRoom">0</span></button>
+<button data-tab="chats" onclick="tab('chats')">Help Chats <span class="count" id="cChat">0</span></button>
+<button data-tab="reports" onclick="tab('reports')">Reports <span class="count" id="cRep">0</span></button>
+<button data-tab="users" onclick="tab('users')">Users <span class="count" id="cUser">0</span></button>
+</div>
+<section class="admin-pane active" id="pane-overview">
+<h2>Overview</h2>
+<div class="stat-grid" id="stats" data-reveal></div>
+<h2>Needs attention</h2>
+<div class="att-grid" id="att"></div>
+<h2>Recent activity</h2>
+<ul class="recent-list" id="recent"></ul>
+<h2>Trust &amp; safety</h2>
+<div class="att-grid" id="safety"></div>
+<div class="undo-row" style="margin-top:14px"><button class="btn ghost" onclick="askReset()">Reset Demo Data</button></div>
+</section>
+<section class="admin-pane" id="pane-resources">
+<h2>Resource moderation</h2>
+<p class="meta">Approve student uploads, remove outdated content.</p>
+<h2>Pending uploads</h2>
+<div class="tbl-wrap"><table class="tbl"><caption>Student uploads awaiting approval</caption><thead><tr><th scope="col">Title</th><th scope="col">Course</th><th scope="col">By</th><th scope="col">Action</th></tr></thead><tbody id="mod"></tbody></table></div>
+<h2>Published resources</h2>
+<div class="tbl-wrap"><table class="tbl"><caption>Live resources — remove outdated or reported items</caption><thead><tr><th scope="col">Title</th><th scope="col">Course</th><th scope="col">By</th><th scope="col">⬇</th><th scope="col">Action</th></tr></thead><tbody id="all"></tbody></table></div>
+</section>
+<section class="admin-pane" id="pane-rooms">
+<h2>Study room moderation</h2>
+<p class="meta">Close full, stale or reported rooms.</p>
+<div class="tbl-wrap"><table class="tbl"><caption>All study rooms</caption><thead><tr><th scope="col">Topic</th><th scope="col">Course</th><th scope="col">Host</th><th scope="col">Joined</th><th scope="col">Action</th></tr></thead><tbody id="roomRows"></tbody></table></div>
+</section>
+<section class="admin-pane" id="pane-chats">
+<h2>Help chat moderation</h2>
+<p class="meta">Flagged messages first — review, remove, ban, mute or dismiss. Full per-course history below.</p>
+<div id="flagCards"></div>
+<h2>All course chats</h2>
+<div id="chatMods"></div>
+</section>
+<section class="admin-pane" id="pane-reports">
+<h2>Reports inbox</h2>
+<p class="meta">Filed by students from Resources, Rooms and Help Chats.</p>
+<div class="tbl-wrap"><table class="tbl"><caption>Student reports</caption><thead><tr><th scope="col">Kind</th><th scope="col">Item</th><th scope="col">By</th><th scope="col">Reason</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead><tbody id="repRows"></tbody></table></div>
+</section>
+<section class="admin-pane" id="pane-users">
+<h2>User moderation</h2>
+<p class="meta">Suspend abusers (blocks uploads, joins, chat) or wipe a user's content.</p>
+<div class="tbl-wrap"><table class="tbl"><caption>Contributors seen in demo data</caption><thead><tr><th scope="col">Name</th><th scope="col">Resources</th><th scope="col">Rooms</th><th scope="col">Msgs</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead><tbody id="userRows"></tbody></table></div>
+</section>
+</div></main>
+<div class="footer">UIU Dock • Staff Console • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/seed.js"></script><script src="js/store.js"></script>
+<script>document.documentElement.classList.add('js');
+let db=getDB(),lastDeleted=null;
+function tab(name){
+  document.querySelectorAll('.admin-tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.admin-pane').forEach(p=>p.classList.toggle('active',p.id==='pane-'+name));
+}
+function paint(){
+  db=getDB();
+  const gate=document.getElementById('gate'),dash=document.getElementById('dash');
+  if(isAdmin()){
+    gate.innerHTML='';dash.style.display='block';
+    document.getElementById('who').textContent='Signed in as Administrator (staff only).';
+    renderAll();
+  } else if(db.user&&db.user.role==='student'){
+    dash.style.display='none';
+    gate.innerHTML=`<div class="page-head"><div class="icon-badge ib-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><h1>Restricted</h1><p class="meta">Students cannot access the staff console.</p></div></div>
+    <div class="empty"><h2>Access denied</h2><p>Your student account (${escapeHTML(db.user.name)}) has no staff access.</p><a class="btn" href="index.html">Back to Home</a> <button class="btn ghost" onclick="doSwitch()">Switch account</button></div>`;
+  } else {
+    dash.style.display='none';
+    gate.innerHTML=`<div class="page-head"><div class="icon-badge ib-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><h1>Staff sign-in</h1><p class="meta">Separate from student login. Demo: admin / admin123</p></div></div>
+    <div class="card" style="max-width:480px"><label class="meta" for="au">Username</label><input id="au" autocomplete="username"><div class="err" id="eA"></div>
+    <label class="meta" for="ap">Password</label><input id="ap" type="password" autocomplete="current-password"><div class="err" id="eP"></div>
+    <div class="modal-actions"><button class="btn btn-block" onclick="doAdminLogin()">Sign in as Staff</button></div></div>`;
+  }
+}
+function doAdminLogin(){const u=document.getElementById('au').value.trim(),p=document.getElementById('ap').value;
+  showErr('eA',u?'':'Enter username.');showErr('eP',p?'':'Enter password.');if(!u||!p)return;
+  if(adminLogin(u,p)){toast('Welcome, Staff');paint();}else{showErr('eP','Invalid staff credentials.');}}
+function counts(){
+  const pend=db.resources.filter(r=>r.status==='pending').length;
+  const open=db.reports.filter(r=>r.status==='open').length;
+  const msgs=Object.values(db.msgs).flat().length;
+  document.getElementById('cRes').textContent=pend;
+  document.getElementById('cRoom').textContent=db.rooms.length;
+  document.getElementById('cChat').textContent=msgs;
+  document.getElementById('cRep').textContent=open;
+  document.getElementById('cUser').textContent=collectUsers().length;
+}
+function renderAll(){
+  db=getDB();if(!isAdmin())return;counts();
+  const totDl=db.resources.reduce((s,r)=>s+r.dl,0);
+  document.getElementById('stats').innerHTML=`<div class="stat"><b>${db.resources.length}</b><small>Resources</small></div><div class="stat"><b>${totDl}</b><small>Downloads</small></div><div class="stat"><b>${db.rooms.length}</b><small>Rooms</small></div><div class="stat"><b>${Object.values(db.msgs).flat().length}</b><small>Chat Msgs</small></div>`;
+  const pendN=db.resources.filter(r=>r.status==='pending').length;
+  const openN=db.reports.filter(r=>r.status==='open').length;
+  const mutedN=Object.keys(db.muted||{}).filter(k=>isMuted(k)).length;
+  document.getElementById('att').innerHTML=`
+   <div class="att-card"><b>${pendN}</b><small>Pending uploads</small><br><button class="btn small" onclick="tab('resources')">Review →</button></div>
+   <div class="att-card"><b>${openN}</b><small>Open reports</small><br><button class="btn small" onclick="tab('reports')">Open inbox →</button></div>
+   <div class="att-card"><b>${db.suspended.length+mutedN}</b><small>Suspended / muted users</small><br><button class="btn small" onclick="tab('users')">Manage →</button></div>`;
+  const recent=[];
+  [...db.resources].slice(-3).reverse().forEach(r=>recent.push(`<b>${escapeHTML(r.t)}</b> <small>resource by ${escapeHTML(r.by)} • ${escapeHTML(r.status)}</small>`));
+  [...db.rooms].slice(-2).reverse().forEach(r=>recent.push(`<b>${escapeHTML(r.t)}</b> <small>room by ${escapeHTML(r.host)} • ${r.joined}/${r.cap}</small>`));
+  [...db.reports].slice(0,2).forEach(r=>recent.push(`<b>Report</b> <small>${escapeHTML(r.kind)} — ${escapeHTML(r.label)} (${escapeHTML(r.status)})</small>`));
+  document.getElementById('recent').innerHTML=recent.map(x=>`<li>${x}</li>`).join('')||'<li>No activity yet.</li>';
+  const flaggedNames=[...new Set(db.reports.filter(r=>r.status==='open'&&r.kind==='message').map(r=>offenderOf(r).name))];
+  document.getElementById('safety').innerHTML=`
+   <div class="att-card"><b>${flaggedNames.length}</b><small>Flagged chatters</small><br><button class="btn small" onclick="tab('chats')">Moderate →</button></div>
+   <div class="att-card"><b>${mutedN}</b><small>Muted (timed)</small><br><button class="btn small" onclick="tab('users')">Review →</button></div>
+   <div class="att-card"><b>${db.audit.length}</b><small>Audit log entries</small><br><button class="btn small" onclick="tab('chats')">View trails →</button></div>`;
+  renderFlags();
+  const pend=db.resources.filter(r=>r.status==='pending');
+  document.getElementById('mod').innerHTML=pend.map(r=>`<tr><td>${escapeHTML(r.t)}</td><td>${escapeHTML(r.c)}</td><td>${escapeHTML(r.by)}</td><td class="mod-row"><button class="btn small" onclick="ap(${r.id})">Approve</button> <button class="btn small ghost" onclick="askRj(${r.id})">Reject</button></td></tr>`).join('')||'<tr><td colspan="4">Queue empty — student uploads will appear here.</td></tr>';
+  const live=db.resources.filter(r=>r.status==='approved');
+  document.getElementById('all').innerHTML=live.map(r=>`<tr><td>${escapeHTML(r.t)}</td><td>${escapeHTML(r.c)}</td><td>${escapeHTML(r.by)}</td><td>${r.dl}</td><td class="mod-row"><button class="btn small ghost" onclick="delRes(${r.id})">Remove</button></td></tr>`).join('')||'<tr><td colspan="5">No published resources.</td></tr>';
+  document.getElementById('roomRows').innerHTML=db.rooms.map(r=>`<tr><td>${escapeHTML(r.t)}</td><td>${escapeHTML(r.c)}</td><td>${escapeHTML(r.host)}</td><td>${r.joined}/${r.cap}</td><td class="mod-row"><button class="btn small ghost" onclick="delRoom(${r.id})">Close room</button></td></tr>`).join('')||'<tr><td colspan="5">No rooms.</td></tr>';
+  document.getElementById('chatMods').innerHTML=db.courses.map(c=>{
+    const list=db.msgs[c.code]||[];
+    return `<details class="chat-mod"><summary>${escapeHTML(c.code)} — ${escapeHTML(c.title)} (${list.length} msgs)</summary>
+    ${list.map(m=>msgCard(c.code,m)).join('')||'<div class="empty"><h2>No messages</h2><p>Nothing in this course chat yet.</p></div>'}
+    ${list.length?`<div style="padding:4px 14px 14px"><button class="btn small ghost" onclick="clearChat('${c.code}')">Clear whole chat</button></div>`:''}</details>`;
+  }).join('');
+function msgCard(course,m){
+  const acc=db.accounts.find(a=>a.name.toLowerCase()===String(m.u).toLowerCase());
+  const trust=trustOf(m.u);
+  const logs=db.audit.filter(a=>(a.target||'').toLowerCase().indexOf(String(m.u).toLowerCase())>-1);
+  return `<div class="flag-card slim">
+   <div class="flag-user"><span class="avatar">${escapeHTML(String(m.u).trim().charAt(0).toUpperCase())}</span>
+    <span class="flag-name">${escapeHTML(m.u)}</span><span class="flag-alias">(${acc?'SID: '+escapeHTML(acc.sid):'Unverified alias'})</span><span class="flag-trust">Trust Score: ${trust}/100</span><span class="flag-time">${escapeHTML(m.t)}</span></div>
+   <div class="flag-quote">${escapeHTML(m.x)}</div>
+   <div class="flag-actions">
+    <button class="btn small" onclick="delMsg('${course}','${m.id}')">Remove Message</button>
+    <button class="btn small navy" onclick="banUserMsg('${course}','${m.id}')">Ban ${escapeHTML(String(m.u).split(' ')[0])}</button>
+    <button class="btn small pale" onclick="muteUserMsg('${course}','${m.id}')">Mute (7 Days)</button>
+   </div>
+   <details class="audit-logs"><summary>Audit Trail (${logs.length} log${logs.length===1?'':'s'})</summary>
+    <ul>${logs.map(l=>`<li><b>${escapeHTML(l.action)}</b> — ${escapeHTML(l.target)} <small>• ${escapeHTML(l.by)} • ${escapeHTML(l.at)}</small></li>`).join('')||'<li>No logs for this user yet.</li>'}</ul>
+   </details></div>`;
+}
+function banUserMsg(course,id){const m=(db.msgs[course]||[]).find(x=>String(x.id)===String(id));if(!m)return;
+  if(!confirm('Ban '+m.u+'? They lose upload/join/chat access.'))return;
+  if(!db.suspended.includes(m.u))db.suspended.push(m.u);
+  logAudit('Banned user',m.u+' @ '+course);saveDB(db);renderAll();toast(m.u+' banned');}
+function muteUserMsg(course,id){const m=(db.msgs[course]||[]).find(x=>String(x.id)===String(id));if(!m)return;
+  if(!confirm('Mute '+m.u+' for 7 days? They can read but not send.'))return;
+  muteUser(m.u,7);saveDB(db);renderAll();toast(m.u+' muted 7 days');}
+  document.getElementById('repRows').innerHTML=db.reports.map(r=>`<tr class="${r.status==='open'?'report-open':'report-done'}"><td>${escapeHTML(r.kind)}</td><td>${escapeHTML(r.label)}${r.course?' ('+escapeHTML(r.course)+')':''}</td><td>${escapeHTML(r.by)}</td><td>${escapeHTML(r.reason)}</td><td><span class="badge ${r.status==='open'?'pend':'ok'}">${escapeHTML(r.status)}</span></td><td class="mod-row">${r.status==='open'?`<button class="btn small" onclick="resolveRep('${r.id}')">Resolve</button>`:''}<button class="btn small ghost" onclick="delRep('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No reports. Students can file them from Resources, Rooms and Help Chats.</td></tr>';
+  const users=collectUsers();
+  document.getElementById('userRows').innerHTML=users.map(u=>{const susp=db.suspended.includes(u.name);
+    return `<tr><td>${escapeHTML(u.name)}</td><td>${u.res}</td><td>${u.rooms}</td><td>${u.msgs}</td><td><span class="badge ${susp?'pend':'ok'}">${susp?'suspended':'active'}</span></td><td class="mod-row">${susp?`<button class="btn small" onclick="unsuspend('${escapeHTML(u.name)}')">Unsuspend</button>`:`<button class="btn small ghost" onclick="suspend('${escapeHTML(u.name)}')">Suspend</button>`} <button class="btn small ghost" onclick="wipeUser('${escapeHTML(u.name)}')">Wipe content</button></td></tr>`;}).join('')||'<tr><td colspan="6">No contributors yet.</td></tr>';
+}
+function collectUsers(){
+  const map={};
+  db.resources.forEach(r=>{map[r.by]=map[r.by]||{name:r.by,res:0,rooms:0,msgs:0};map[r.by].res++;});
+  db.rooms.forEach(r=>{map[r.host]=map[r.host]||{name:r.host,res:0,rooms:0,msgs:0};map[r.host].rooms++;});
+  Object.values(db.msgs).flat().forEach(m=>{map[m.u]=map[m.u]||{name:m.u,res:0,rooms:0,msgs:0};map[m.u].msgs++;});
+  return Object.values(map).filter(u=>u.name!=='Administrator').sort((a,b)=>(b.res+b.rooms+b.msgs)-(a.res+a.rooms+a.msgs));
+}
+let flagCache=[];
+function offenderOf(rep){
+  const list=db.msgs[rep.course]||[];
+  const m=rep.refId!=null?list.find(x=>String(x.id)===String(rep.refId)):null;
+  if(m)return {name:m.u,text:m.x};
+  const name=(rep.label||'Unknown').split(':')[0].trim()||'Unknown';
+  return {name,text:(rep.label||'').split(':').slice(1).join(':').trim()||rep.label};
+}
+function flagCategory(reason){
+  const s=(reason||'').toLowerCase();
+  if(/leak|cheat|dishonest|exam|unfair|plagiar|answer key/.test(s))return 'ACADEMIC DISHONESTY & UNFAIR MEANS';
+  if(/spam|advert|promo|telegram|dm me/.test(s))return 'SPAM & SOLICITATION';
+  if(/abus|harass|hate|threat|slur/.test(s))return 'HARASSMENT & ABUSE';
+  return 'FLAGGED CONTENT';
+}
+function renderFlags(){
+  const groups={};
+  db.reports.filter(r=>r.status==='open'&&r.kind==='message').forEach(r=>{
+    const key=(r.course||'?')+'|'+(r.refId!=null?r.refId:r.label);
+    (groups[key]=groups[key]||{course:r.course,refId:r.refId,items:[]}).items.push(r);
+  });
+  flagCache=Object.values(groups);
+  document.getElementById('flagCards').innerHTML=flagCache.map((g,i)=>{
+    const o=offenderOf(g.items[0]);
+    const acc=db.accounts.find(a=>a.name.toLowerCase()===o.name.toLowerCase());
+    const trust=trustOf(o.name);
+    const when=g.items.map(x=>x.at).filter(Boolean).pop()||'recently';
+    const logs=db.audit.filter(a=>(a.target||'').toLowerCase().indexOf(o.name.toLowerCase())>-1);
+    return `<div class="flag-card">
+     <div class="flag-head"><span class="flag-cat">⚠ REPORT: ${flagCategory(g.items[0].reason)}</span><span class="flag-n">${g.items.length} Flag Report${g.items.length>1?'s':''}</span><span class="flag-time">${escapeHTML(when)}</span></div>
+     <div class="flag-user"><span class="flag-noentry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg></span>
+      <span class="flag-name">${escapeHTML(o.name)}</span><span class="flag-alias">(${acc?'SID: '+escapeHTML(acc.sid):'Unverified alias'})</span><span class="flag-trust">Trust Score: ${trust}/100</span></div>
+     <div class="flag-quote">${escapeHTML(o.text||'(message unavailable)')}</div>
+     <div class="flag-actions">
+      <button class="btn small" onclick="flagRemove(${i})">Remove Message</button>
+      <button class="btn small navy" onclick="flagBan(${i})">Ban ${escapeHTML(o.name.split(' ')[0])}</button>
+      <button class="btn small pale" onclick="flagMute(${i})">Mute (7 Days)</button>
+      <button class="btn small linklike" onclick="flagDismiss(${i})">Dismiss False Alarm</button>
+     </div>
+     <details class="audit-logs"><summary>Audit Trail (${logs.length} log${logs.length===1?'':'s'})</summary>
+      <ul>${logs.map(l=>`<li><b>${escapeHTML(l.action)}</b> — ${escapeHTML(l.target)} <small>• ${escapeHTML(l.by)} • ${escapeHTML(l.at)}</small></li>`).join('')||'<li>No logs for this user yet.</li>'}</ul>
+     </details></div>`;
+  }).join('')||'<div class="empty"><h2>No flagged messages</h2><p>Student reports on chat messages will appear here as review cards.</p></div>';
+}
+function flagResolveGroup(g){g.items.forEach(r=>{const x=db.reports.find(y=>String(y.id)===String(r.id));if(x)x.status='resolved';});}
+function flagRemove(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
+  if(!confirm('Remove this message from '+(g.course||'chat')+'?'))return;
+  if(g.refId!=null&&db.msgs[g.course])db.msgs[g.course]=db.msgs[g.course].filter(x=>String(x.id)!==String(g.refId));
+  flagResolveGroup(g);logAudit('Removed flagged message',o.name+' @ '+(g.course||''));saveDB(db);renderAll();toast('Message removed');}
+function flagBan(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
+  if(!confirm('Ban '+o.name+'? They lose upload/join/chat access.'))return;
+  if(!db.suspended.includes(o.name))db.suspended.push(o.name);
+  flagResolveGroup(g);logAudit('Banned user',o.name+' @ '+(g.course||''));saveDB(db);renderAll();toast(o.name+' banned');}
+function flagMute(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
+  if(!confirm('Mute '+o.name+' for 7 days? They can read but not send.'))return;
+  muteUser(o.name,7);flagResolveGroup(g);saveDB(db);renderAll();toast(o.name+' muted 7 days');}
+function flagDismiss(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
+  flagResolveGroup(g);logAudit('Dismissed false alarm',o.name+' @ '+(g.course||''));saveDB(db);renderAll();toast('Dismissed as false alarm');}
+function ap(id){const r=db.resources.find(x=>x.id===id);if(!r)return;r.status='approved';logAudit('Approved resource',r.t+' ('+r.c+')');saveDB(db);renderAll();toast('Approved');}
+function askRj(id){const r=db.resources.find(x=>x.id===id);if(!r)return;if(!confirm('Reject and remove "'+r.t+'"?'))return;
+  db.resources=db.resources.filter(x=>x.id!==id);logAudit('Rejected resource',r.t+' ('+r.c+')');saveDB(db);renderAll();toast('Rejected/removed');}
+function delRes(id){const r=db.resources.find(x=>x.id===id);if(!r)return;if(!confirm('Remove "'+r.t+'" from the hub?'))return;
+  lastDeleted={type:'res',item:r};db.resources=db.resources.filter(x=>x.id!==id);logAudit('Removed resource',r.t);saveDB(db);renderAll();toast('Resource removed',undoDel);}
+function delRoom(id){const r=db.rooms.find(x=>x.id===id);if(!r)return;if(!confirm('Close room "'+r.t+'"? Members lose access.'))return;
+  lastDeleted={type:'room',item:r};db.rooms=db.rooms.filter(x=>x.id!==id);logAudit('Closed room',r.t+' ('+r.c+')');saveDB(db);renderAll();toast('Room closed',undoDel);}
+function delMsg(course,id){const list=db.msgs[course]||[];const m=list.find(x=>String(x.id)===String(id));if(!m)return;if(!confirm('Delete this message from '+course+'?'))return;
+  db.msgs[course]=list.filter(x=>String(x.id)!==String(id));logAudit('Removed message',m.u+' @ '+course);saveDB(db);renderAll();toast('Message deleted');}
+function clearChat(course){if(!confirm('Clear ALL messages in '+course+'?'))return;
+  db.msgs[course]=[];logAudit('Cleared chat',course);saveDB(db);renderAll();toast('Chat cleared');}
+function resolveRep(id){const r=db.reports.find(x=>String(x.id)===String(id));if(r){r.status='resolved';logAudit('Resolved report',r.kind+': '+r.label);saveDB(db);renderAll();}}
+function delRep(id){db.reports=db.reports.filter(x=>String(x.id)!==String(id));saveDB(db);renderAll();}
+function suspend(name){if(!confirm('Suspend '+name+'? They cannot upload, join or chat.'))return;
+  if(!db.suspended.includes(name))db.suspended.push(name);logAudit('Suspended user',name);saveDB(db);renderAll();toast(name+' suspended');}
+function unsuspend(name){db.suspended=db.suspended.filter(x=>x!==name);logAudit('Reinstated user',name);saveDB(db);renderAll();toast(name+' reinstated');}
+function wipeUser(name){if(!confirm('Delete ALL content by '+name+' (resources, rooms, messages)?'))return;
+  lastDeleted={type:'user',name,snapshot:JSON.stringify(db)};db.resources=db.resources.filter(r=>r.by!==name);
+  db.rooms=db.rooms.filter(r=>r.host!==name);
+  Object.keys(db.msgs).forEach(c=>{db.msgs[c]=db.msgs[c].filter(m=>m.u!==name);});
+  saveDB(db);renderAll();toast('Content wiped',undoDel);}
+function undoDel(){if(!lastDeleted)return;
+  if(lastDeleted.type==='res')db.resources.unshift(lastDeleted.item);
+  else if(lastDeleted.type==='room')db.rooms.unshift(lastDeleted.item);
+  else if(lastDeleted.type==='user'){const s=JSON.parse(lastDeleted.snapshot);db.resources=s.resources;db.rooms=s.rooms;db.msgs=s.msgs;}
+  lastDeleted=null;saveDB(db);renderAll();}
+function doLogout(){logout();location.href='index.html';}
+function doSwitch(){logout();paint();window.scrollTo(0,0);}
+function askReset(){if(!isAdmin())return;if(!confirm('Reset all demo data? This clears LocalStorage.'))return;localStorage.removeItem('uiu_dock_v1');location.reload();}
+paint();
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
+document.querySelectorAll('[data-reveal]').forEach(el=>io.observe(el));
+</script></body></html>

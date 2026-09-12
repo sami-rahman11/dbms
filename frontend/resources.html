@@ -1,0 +1,67 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resources - UIU Dock</title>
+<meta name="description" content="Searchable, verified, versioned UIU course materials.">
+<meta name="theme-color" content="#A63608">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css"></head><body class="pg-resources">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span></div>
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
+<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html" class="active" aria-current="page">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="admin.html">Admin</a><a href="login.html">Login</a></nav></div></header>
+<main class="wrap" id="main"><div class="page-head"><div class="icon-badge ib-hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div><h1>Resources</h1><p class="meta">Searchable, verified, versioned course materials.</p></div><div class="hero-cta"><button class="btn" onclick="guardUpload()">+ Upload</button></div></div>
+<details class="filters-box" open data-reveal><summary>Search &amp; filters</summary>
+<div class="toolbar"><div class="filters">
+<input id="q" placeholder="Search title, course, uploader..." aria-label="Search resources">
+<select id="fCourse" aria-label="Filter by course"><option value="">All Courses</option></select>
+<select id="fType" aria-label="Filter by type"><option value="">All Types</option><option>Notes</option><option>Slides</option><option>Past Questions</option><option>Lab Sheet</option><option>Link</option></select>
+<select id="fSort" aria-label="Sort"><option value="dl">Most Downloaded</option><option value="rating">Top Rated</option></select>
+</div><button class="btn ghost" onclick="clearF()">Clear filters</button><button class="btn" onclick="guardUpload()">+ Upload</button></div>
+</details>
+<div class="res-grid" id="grid"></div><div id="empty"></div></main>
+<div class="modal-bg" id="m"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="upTitle"><h2 id="upTitle">Upload Resource</h2>
+<label for="uT">Title *</label><input id="uT"><div class="err" id="eT"></div>
+<label for="uC">Course</label><select id="uC"></select>
+<label for="uTy">Type</label><select id="uTy"><option>Notes</option><option>Slides</option><option>Past Questions</option><option>Lab Sheet</option><option>Link</option></select>
+<label for="uL">Link (https://... — validated, optional)</label><input id="uL" placeholder="https://drive.google.com/..."><div class="err" id="eL"></div>
+<label for="uBy">Submitter name *</label><input id="uBy" placeholder="e.g. Sami Rahman" autocomplete="name"><div class="err" id="eBy"></div>
+<div class="modal-actions"><button class="btn" onclick="doUpload()">Submit for Review</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div></div></div>
+<div class="footer">UIU Dock • Database Management System Lab • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/seed.js"></script><script src="js/store.js"></script>
+<script>document.documentElement.classList.add('js');
+let db=getDB();
+const fc=document.getElementById('fCourse'),uc=document.getElementById('uC');
+db.courses.forEach(c=>{fc.innerHTML+=`<option>${c.code}</option>`;uc.innerHTML+=`<option>${c.code}</option>`;});
+function tcls(type){return {'Notes':'t-notes','Slides':'t-slides','Past Questions':'t-past','Lab Sheet':'t-lab','Link':'t-link'}[type]||'t-notes';}
+function tico(type){const p={'Notes':'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>','Slides':'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>','Past Questions':'<path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/>','Lab Sheet':'<path d="M9 3h6M10 3v6L4.5 19a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 9V3"/><path d="M7 15h10"/>','Link':'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>'}[type]||'';
+ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;}
+function render(){
+ const q=document.getElementById('q').value.toLowerCase(),f=fc.value,ty=document.getElementById('fType').value,s=document.getElementById('fSort').value;
+ let list=db.resources.filter(r=>r.status==='approved');
+ if(q)list=list.filter(r=>(r.t+r.c+r.by).toLowerCase().includes(q));
+ if(f)list=list.filter(r=>r.c===f);if(ty)list=list.filter(r=>r.type===ty);
+ list.sort((a,b)=>s==='dl'?b.dl-a.dl:b.rating-a.rating);
+  document.getElementById('grid').innerHTML=list.map(r=>{const rated=db.rated&&db.rated[r.id];
+  return `<div class="res-card ${tcls(r.type)}" data-reveal><div class="res-top"><span class="t-ico">${tico(r.type)}</span><div class="res-tags"><span class="tag">${escapeHTML(r.c)}</span><span class="tag">${escapeHTML(r.type)}</span></div><span class="ver">${escapeHTML(r.v)}</span></div><h3>${escapeHTML(r.t)}</h3><div class="res-by"><span class="avatar">${escapeHTML(r.by.trim().charAt(0).toUpperCase())}</span><span class="meta">by ${escapeHTML(r.by)}</span></div><div class="res-stats"><span class="gold">★ ${escapeHTML(r.rating)}</span><span>⬇ ${escapeHTML(r.dl)} downloads</span></div><div class="actions"><button class="btn small" onclick="dl(${r.id})">Download</button><button class="btn small ghost" ${rated?'disabled':''} onclick="rate(${r.id})">${rated?'★ Rated':'★ Rate'}</button><button class="btn small ghost" onclick="repRes(${r.id})">Report</button></div></div>`;}).join('');
+ document.getElementById('empty').innerHTML=list.length?'':`<div class="empty"><h2>No resources found</h2><p>Try clearing filters — or upload the first one for this course.</p><button class="btn" onclick="guardUpload()">+ Upload Resource</button> <button class="btn ghost" onclick="clearF()">Clear filters</button></div>`;
+ watchReveals();
+}
+function clearF(){document.getElementById('q').value='';fc.value='';document.getElementById('fType').value='';document.getElementById('fSort').value='dl';render();}
+['q','fCourse','fType','fSort'].forEach(id=>document.getElementById(id).oninput=render);
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
+function watchReveals(){document.querySelectorAll('[data-reveal]:not(.in)').forEach(el=>io.observe(el));}
+watchReveals();render();
+function doUpload(){const t=document.getElementById('uT').value.trim();const l=document.getElementById('uL').value.trim();const by=document.getElementById('uBy').value.trim();
+ showErr('eT',t?'':'Title is required.');showErr('eL',l&&!validURL(l)?'Enter a valid URL or leave blank.':'');showErr('eBy',by?'':'Enter the submitter name.');
+ if(!t||!by||(l&&!validURL(l)))return;
+ if(isSuspended(by)){toast('That name is suspended — upload blocked.');return;}
+ db.resources.unshift({id:Date.now(),c:uc.value,t,type:document.getElementById('uTy').value,by,dl:0,rating:5.0,v:'v1.0',status:'pending',link:l});
+ saveDB(db);closeModal();toast('Submitted — pending staff review');render();}
+function guardUpload(){if(requireAuth('Create an account to upload resources'))openModal();}
+function dl(id){if(!requireAuth('Create an account to download files'))return;const r=db.resources.find(x=>x.id===id);r.dl++;saveDB(db);render();toast('Download tracked: '+r.dl);}
+function repRes(id){if(!requireAuth('Create an account to report content'))return;const r=db.resources.find(x=>x.id===id);const reason=prompt('Report "'+r.t+'" — reason?','Outdated / wrong course / spam');if(reason===null)return;
+ if(fileReport('resource',{refId:id,label:r.t+' ('+r.c+')',reason:reason||'No reason given'}))toast('Reported — staff will review');}
+function rate(id){if(!requireAuth('Create an account to rate resources'))return;db.rated=db.rated||{};if(db.rated[id])return toast('Already rated (demo: once per browser)');
+  const r=db.resources.find(x=>x.id===id);r.rating=Math.min(5,+(r.rating+0.1).toFixed(1));db.rated[id]=1;saveDB(db);render();toast('Thanks for rating');}
+
+</script></body></html>

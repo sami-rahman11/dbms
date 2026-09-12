@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Help Desk - UIU Dock</title>
+<meta name="description" content="Course-wise persistent group chats for quick peer help.">
+<meta name="theme-color" content="#A63608">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css"></head><body class="pg-help">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span></div>
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
+<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html" class="active" aria-current="page">Help Desk</a><a href="admin.html">Admin</a><a href="login.html">Login</a></nav></div></header>
+<main class="wrap" id="main"><div class="page-head"><div class="icon-badge ib-help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div><h1>Help Desk</h1><p class="meta">Pick a course → jump into its group chat.</p></div></div>
+<div class="guest-gate" id="guestGate"><div style="flex:1;min-width:220px"><h2>Members-only chat</h2><p>Create a free account to read and join course discussions.</p></div><a class="btn" href="login.html">Create account →</a></div>
+<div class="chat-filters" data-reveal><input id="q" placeholder="Search courses..." aria-label="Search courses"><input id="mq" placeholder="Search messages in this chat..." aria-label="Search messages"></div>
+<div class="chat-layout" data-reveal><div class="course-list" id="clist" role="listbox" aria-label="Courses"></div>
+<div class="chat-pane"><div class="chat-head"><b id="ctitle"></b> <span class="meta" id="csub"></span></div>
+<div class="msgs" id="msgs" aria-live="polite"></div>
+<div class="chat-input"><input id="in" placeholder="Ask a question in this course chat... (Enter to send)" aria-label="Message"><button class="btn" onclick="send()">Send</button></div></div></div></main>
+<div class="footer">UIU Dock • Database Management System Lab • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/seed.js"></script><script src="js/store.js"></script>
+<script>document.documentElement.classList.add('js');
+let db=getDB(),cur=db.courses[1].code;
+function renderList(){const q=document.getElementById('q').value.toLowerCase();
+ const list=db.courses.filter(c=>(c.code+c.title).toLowerCase().includes(q));
+ document.getElementById('clist').innerHTML=list.map(c=>{const n=(db.msgs[c.code]||[]).length;
+ return `<button class="course-item ${c.code===cur?'active':''}" role="option" aria-selected="${c.code===cur}" onclick="sel('${escapeHTML(c.code)}')"><b>${escapeHTML(c.code)}</b><small>${escapeHTML(c.title)} • ${n} msgs</small></button>`;}).join('')||'<p class="meta" style="padding:14px">No courses match.</p>';}
+function sel(code){cur=code;renderChat();renderList();pulseChatHead();}
+function renderChat(){const c=db.courses.find(x=>x.code===cur);document.getElementById('ctitle').textContent=c.code+' — '+c.title;
+ document.getElementById('csub').textContent='● online (demo) • persistent history';
+ const mq=(document.getElementById('mq').value||'').toLowerCase();const me=db.user?db.user.name:'You';
+ const list=(db.msgs[cur]||[]).filter(m=>!mq||(m.u+m.x).toLowerCase().includes(mq));
+  document.getElementById('msgs').innerHTML=list.map(m=>`<div class="msg ${m.u===me?'me':''}"><b class="msg-name">${escapeHTML(m.u)}</b>${escapeHTML(m.x)}<small>${escapeHTML(m.t)}${m.u!==me?` • <a href="#" onclick="repMsg('${cur}','${m.id}');return false;" style="text-decoration:underline">Report</a>`:''}</small></div>`).join('')||'<div class="empty"><h2>No messages yet</h2><p>Start the discussion — ask the first question for '+escapeHTML(cur)+'.</p></div>';
+  const box=document.getElementById('msgs');box.scrollTop=box.scrollHeight;}
+function send(){const el=document.getElementById('in');const v=el.value.trim();if(!v){toast('Type a message first');el.focus();return;}
+ if(!requireAuth('Create an account to join the chat'))return;const me=db.user?db.user.name:'You';
+ if(isSuspended(me)){toast('Your account is suspended — chat blocked.');return;}
+ const mutedUntil=isMuted(me);if(mutedUntil){toast('You are muted until '+new Date(mutedUntil).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.');return;}
+ (db.msgs[cur]=db.msgs[cur]||[]).push({id:'m'+Date.now(),u:me,x:v,t:new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})});
+  saveDB(db);el.value='';renderChat();renderList();markFreshMessage();}
+document.getElementById('in').addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+function repMsg(course,id){if(!requireAuth('Create an account to report content'))return;const m=(db.msgs[course]||[]).find(x=>String(x.id)===String(id));if(!m)return;
+ const reason=prompt('Report message by '+m.u+' — reason?','Spam / abusive / off-topic');if(reason===null)return;
+ if(fileReport('message',{refId:id,course,label:m.u+': "'+m.x.slice(0,60)+'"',reason:reason||'No reason given'}))toast('Reported — staff will review');}
+document.getElementById('q').oninput=renderList;document.getElementById('mq').oninput=renderChat;
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
+document.querySelectorAll('[data-reveal]').forEach(el=>io.observe(el));
+if(!currentUser())document.body.classList.add('guest');
+renderList();renderChat();
+</script></body></html>
