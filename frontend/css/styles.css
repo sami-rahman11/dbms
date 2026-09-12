@@ -37,24 +37,24 @@ input,select,textarea{caret-color:var(--orange-btn)}
 *::-webkit-scrollbar-thumb{background:#232B5E;border-radius:99px;border:2px solid var(--bg)}
 *::-webkit-scrollbar-track{background:transparent}
 
-/* ---------- topbar: Aurora Dock glass — deep navy, fast-switch nav ---------- */
-.topbar{background:rgba(7,11,31,.84);color:#fff;position:sticky;top:0;z-index:50;border-bottom:1px solid rgba(255,255,255,.09);-webkit-backdrop-filter:blur(14px) saturate(1.25);backdrop-filter:blur(14px) saturate(1.25);transition:box-shadow var(--dur-state) var(--ease),background var(--dur-state) var(--ease)}
+/* ---------- topbar: white bar, orange identity ---------- */
+.topbar{background:rgba(255,255,255,.94);color:var(--ink);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--line);-webkit-backdrop-filter:blur(14px) saturate(1.25);backdrop-filter:blur(14px) saturate(1.25);transition:box-shadow var(--dur-state) var(--ease),background var(--dur-state) var(--ease)}
 .topbar::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:2px;background:linear-gradient(90deg,var(--orange),var(--orange-2),var(--violet),var(--cyan));opacity:.85;pointer-events:none}
-.topbar.scrolled{background:rgba(7,11,31,.94);box-shadow:0 12px 32px rgba(7,11,31,.45)}
+.topbar.scrolled{background:rgba(255,255,255,.98);box-shadow:0 12px 32px rgba(16,21,58,.12)}
 .topbar-inner{max-width:1180px;margin:auto;display:flex;align-items:center;gap:14px;padding:10px 20px}
-.logo{font-weight:800;font-size:20px;letter-spacing:-.03em;display:flex;align-items:center;gap:10px;color:#fff}
+.logo{font-weight:800;font-size:20px;letter-spacing:-.03em;display:flex;align-items:center;gap:10px;color:var(--ink)}
 a.logo:hover .brand-mark{transform:translateY(-1px)}
 .brand-mark{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#FF6A00,#C2410C 60%,#7C2D12);display:grid;place-items:center;flex-shrink:0;box-shadow:0 4px 14px rgba(255,106,0,.45),inset 0 0 0 1px rgba(255,255,255,.22);transition:transform var(--dur-fast) var(--ease)}
 .brand-mark svg{width:19px;height:19px}
-.logo span{color:#FFC79A;font-weight:700}
-.topbar :focus-visible{outline:3px solid #FFB25E;outline-offset:2px}
-.nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap;align-items:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:99px;padding:4px}
-.nav a{position:relative;padding:8px 14px;border-radius:99px;font-size:14px;font-weight:600;color:#C9CDE8;transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease)}
-.nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+.logo span{color:var(--orange-btn-h);font-weight:700}
+.topbar :focus-visible{outline:3px solid var(--orange-btn);outline-offset:2px}
+.nav{display:flex;gap:2px;margin-left:auto;flex-wrap:wrap;align-items:center;background:#F1F2F9;border:1px solid var(--line);border-radius:99px;padding:4px}
+.nav a{position:relative;padding:8px 14px;border-radius:99px;font-size:14px;font-weight:600;color:var(--ink2);transition:background var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease)}
+.nav a:hover{background:#fff;color:var(--ink);box-shadow:var(--shadow-s)}
 .nav a:active{transform:scale(.97)}
 .nav a.active{background:linear-gradient(135deg,#C2410C,#9A3412 70%);color:#fff;box-shadow:0 4px 14px rgba(154,52,18,.5),inset 0 0 0 1px rgba(255,255,255,.22)}
-.nav-toggle{display:none;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:8px 12px;font-size:14px;font-weight:600;margin-left:auto;cursor:pointer;align-items:center;gap:8px}
-.nav-toggle:hover{background:rgba(255,255,255,.16)}
+.nav-toggle{display:none;background:#F1F2F9;color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:14px;font-weight:600;margin-left:auto;cursor:pointer;align-items:center;gap:8px}
+.nav-toggle:hover{background:#E5E7EB}
 .nav-toggle svg{width:16px;height:16px}
 
 /* ---------- buttons ---------- */
@@ -250,10 +250,10 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14px;background:#fff}
 .footer a{text-decoration:underline}
 /* ---------- notification bell ---------- */
 .notif-wrap{position:relative;margin-left:10px}
-#notifBtn{position:relative;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:12px;padding:8px 11px;cursor:pointer;transition:background var(--dur-fast) var(--ease)}
-#notifBtn:hover{background:rgba(255,255,255,.17)}
+#notifBtn{position:relative;display:inline-flex;align-items:center;justify-content:center;background:#F1F2F9;border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:8px 11px;cursor:pointer;transition:background var(--dur-fast) var(--ease)}
+#notifBtn:hover{background:#E5E7EB}
 #notifBtn svg{width:18px;height:18px}
-#notifCount{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;background:#DC2626;color:#fff;font-size:10.5px;font-weight:800;border-radius:99px;display:grid;place-items:center;padding:0 5px;border:2px solid #0B1026}
+#notifCount{position:absolute;top:-7px;right:-7px;min-width:19px;height:19px;background:#DC2626;color:#fff;font-size:10.5px;font-weight:800;border-radius:99px;display:grid;place-items:center;padding:0 5px;border:2px solid #fff}
 #notifPanel{position:absolute;right:0;top:calc(100% + 10px);width:min(360px,86vw);background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 60px rgba(7,11,31,.35);overflow:hidden;display:none;z-index:80}
 #notifPanel.open{display:block;animation:page-in 200ms var(--ease) both}
 .notif-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--peach)}
@@ -329,7 +329,16 @@ body.pg-login .card{border-top:4px solid #DB2777}
 body.pg-admin{background:linear-gradient(180deg,#061A4D 0%,#0B2E7A 180px,var(--bg) 420px)}
 body.pg-admin .topbar{background:linear-gradient(135deg,rgba(6,26,77,.95),rgba(11,46,122,.9) 60%,rgba(20,64,155,.9));border-bottom:1px solid rgba(147,197,253,.28)}
 body.pg-admin .topbar::after{background:linear-gradient(90deg,#3B82F6,#93C5FD,#38E1FF)}
+body.pg-admin .logo{color:#fff}
 body.pg-admin .logo span{color:#BFDBFE}
+body.pg-admin .topbar :focus-visible{outline-color:#93C5FD}
+body.pg-admin .nav{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.14)}
+body.pg-admin .nav a{color:#C9CDE8}
+body.pg-admin .nav a:hover{background:rgba(255,255,255,.1);color:#fff;box-shadow:none}
+body.pg-admin .nav-toggle{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.16)}
+body.pg-admin .nav-toggle:hover{background:rgba(255,255,255,.16)}
+body.pg-admin #notifBtn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.16);color:#fff}
+body.pg-admin #notifBtn:hover{background:rgba(255,255,255,.17)}
 body.pg-admin .brand-mark{background:linear-gradient(135deg,#2563EB,#1E40AF 65%,#172554);box-shadow:0 4px 14px rgba(59,130,246,.5),inset 0 0 0 1px rgba(191,219,254,.3)}
 .staff-tag{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;background:#60A5FA;color:#061A4D;padding:4px 10px;border-radius:99px;margin-left:8px}
 body.pg-admin .nav a.active{background:linear-gradient(135deg,#2563EB,#1D4ED8);box-shadow:0 4px 14px rgba(59,130,246,.5),inset 0 0 0 1px rgba(191,219,254,.3)}
