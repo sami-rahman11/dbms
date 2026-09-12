@@ -8,7 +8,7 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span></div>
 <button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
-<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html" class="active" aria-current="page">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="admin.html">Admin</a><a href="login.html">Login</a></nav></div></header>
+<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html" class="active" aria-current="page">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="complain.html">Complain</a><a href="admin.html">Admin</a><a href="login.html">Login</a></nav><div class="notif-wrap"><button id="notifBtn" onclick="toggleNotifs(event)" aria-label="Notifications">🔔<span id="notifCount"></span></button><div id="notifPanel"></div></div></div></header>
 <main class="wrap" id="main"><div class="page-head"><div class="icon-badge ib-hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div><div><h1>Resources</h1><p class="meta">Searchable, verified, versioned course materials.</p></div><div class="hero-cta"><button class="btn" onclick="guardUpload()">+ Upload</button></div></div>
 <details class="filters-box" open data-reveal><summary>Search &amp; filters</summary>
 <div class="toolbar"><div class="filters">
@@ -16,7 +16,7 @@
 <select id="fCourse" aria-label="Filter by course"><option value="">All Courses</option></select>
 <select id="fType" aria-label="Filter by type"><option value="">All Types</option><option>Notes</option><option>Slides</option><option>Past Questions</option><option>Lab Sheet</option><option>Link</option></select>
 <select id="fSort" aria-label="Sort"><option value="dl">Most Downloaded</option><option value="rating">Top Rated</option></select>
-</div><button class="btn ghost" onclick="clearF()">Clear filters</button><button class="btn" onclick="guardUpload()">+ Upload</button></div>
+</div><button class="btn ghost" onclick="clearF()">Clear filters</button><button class="btn" onclick="guardUpload()">+ Upload</button><span id="courseBtn"></span></div>
 </details>
 <div class="res-grid" id="grid"></div><div id="empty"></div></main>
 <div class="modal-bg" id="m"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="upTitle"><h2 id="upTitle">Upload Resource</h2>
@@ -26,6 +26,11 @@
 <label for="uL">Link (https://... — validated, optional)</label><input id="uL" placeholder="https://drive.google.com/..."><div class="err" id="eL"></div>
 <label for="uBy">Submitter name *</label><input id="uBy" placeholder="e.g. Sami Rahman" autocomplete="name"><div class="err" id="eBy"></div>
 <div class="modal-actions"><button class="btn" onclick="doUpload()">Submit for Review</button> <button class="btn ghost" onclick="closeModal()">Cancel</button></div></div></div>
+<div class="modal-bg" id="cm"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="cmTitle"><h2 id="cmTitle">Propose Course</h2><p class="meta">Granted members can grow the catalog. Appears in filters + Help Desk instantly.</p>
+<label for="cCode">Course code *</label><input id="cCode" placeholder="e.g. CSE 341"><div class="err" id="eCode"></div>
+<label for="cTitle">Title *</label><input id="cTitle" placeholder="e.g. Machine Learning"><div class="err" id="eTitle"></div>
+<label for="cSem">Semester</label><input id="cSem" placeholder="e.g. Summer 2026" value="Summer 2026">
+<br><br><div class="modal-actions"><button class="btn" onclick="doAddCourse()">Add course</button> <button class="btn ghost" onclick="closeModal('cm')">Cancel</button></div></div></div>
 <div class="footer">UIU Dock • Database Management System Lab • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="js/seed.js"></script><script src="js/store.js"></script>
 <script>document.documentElement.classList.add('js');
@@ -50,14 +55,33 @@ function clearF(){document.getElementById('q').value='';fc.value='';document.get
 ['q','fCourse','fType','fSort'].forEach(id=>document.getElementById(id).oninput=render);
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
 function watchReveals(){document.querySelectorAll('[data-reveal]:not(.in)').forEach(el=>io.observe(el));}
-watchReveals();render();
+watchReveals();paintCourseBtn();render();
 function doUpload(){const t=document.getElementById('uT').value.trim();const l=document.getElementById('uL').value.trim();const by=document.getElementById('uBy').value.trim();
  showErr('eT',t?'':'Title is required.');showErr('eL',l&&!validURL(l)?'Enter a valid URL or leave blank.':'');showErr('eBy',by?'':'Enter the submitter name.');
  if(!t||!by||(l&&!validURL(l)))return;
  if(isSuspended(by)){toast('That name is suspended — upload blocked.');return;}
+ if(!canUpload(by)){toast('Upload permission revoked — contact staff.');return;}
  db.resources.unshift({id:Date.now(),c:uc.value,t,type:document.getElementById('uTy').value,by,dl:0,rating:5.0,v:'v1.0',status:'pending',link:l});
  saveDB(db);closeModal();toast('Submitted — pending staff review');render();}
-function guardUpload(){if(requireAuth('Create an account to upload resources'))openModal();}
+function guardUpload(){if(!requireAuth('Create an account to upload resources'))return;
+ const me=db.user.name;if(!canUpload(me)){toast('Upload permission revoked — contact staff.');return;}openModal();}
+function paintCourseBtn(){
+  const u=currentUser();
+  document.getElementById('courseBtn').innerHTML=(u&&canAddCourse(u.name))?`<button class="btn ghost" onclick="openModal('cm')">＋ Propose course</button>`:'';
+}
+function doAddCourse(){
+  const u=currentUser();if(!u||!canAddCourse(u.name)){toast('Course-add permission required — ask staff.');return;}
+  const code=document.getElementById('cCode').value.trim().toUpperCase(),title=document.getElementById('cTitle').value.trim(),sem=document.getElementById('cSem').value.trim()||'Summer 2026';
+  showErr('eCode',code?'':'Enter a course code.');showErr('eTitle',title?'':'Enter a title.');
+  if(!code||!title)return;
+  if(db.courses.some(c=>c.code.toLowerCase()===code.toLowerCase())){showErr('eCode','That course already exists.');return;}
+  db.courses.push({code,title,semester:sem});saveDB(db);closeModal('cm');
+  document.getElementById('cCode').value='';document.getElementById('cTitle').value='';
+  const fc=document.getElementById('fCourse'),uc=document.getElementById('uC');
+  fc.innerHTML='<option value="">All Courses</option>';uc.innerHTML='';
+  db.courses.forEach(c=>{fc.innerHTML+=`<option>${escapeHTML(c.code)}</option>`;uc.innerHTML+=`<option>${escapeHTML(c.code)}</option>`;});
+  render();toast(code+' added to the catalog');
+}
 function dl(id){if(!requireAuth('Create an account to download files'))return;const r=db.resources.find(x=>x.id===id);r.dl++;saveDB(db);render();toast('Download tracked: '+r.dl);}
 function repRes(id){if(!requireAuth('Create an account to report content'))return;const r=db.resources.find(x=>x.id===id);const reason=prompt('Report "'+r.t+'" — reason?','Outdated / wrong course / spam');if(reason===null)return;
  if(fileReport('resource',{refId:id,label:r.t+' ('+r.c+')',reason:reason||'No reason given'}))toast('Reported — staff will review');}

@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings - UIU Dock</title>
+<meta name="description" content="Manage your UIU Dock profile, notifications and account.">
+<meta name="theme-color" content="#A63608">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css"></head><body class="pg-login">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span></div>
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
+<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="complain.html">Complain</a><a href="login.html">Login</a></nav><div class="notif-wrap"><button id="notifBtn" onclick="toggleNotifs(event)" aria-label="Notifications">🔔<span id="notifCount"></span></button><div id="notifPanel"></div></div></div></header>
+<main class="wrap wrap-narrow" id="main">
+<div class="page-head" data-reveal><div class="icon-badge ib-help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div><div><h1>Settings</h1><p class="meta" id="who"></p></div></div>
+<div id="gate"></div>
+<div id="body" style="display:none">
+<div class="card" data-reveal><h2>Profile</h2><p class="meta">Renaming updates everything you authored — resources, rooms, messages.</p><br>
+<label class="meta" for="sName">Display name *</label><input id="sName"><div class="err" id="eName"></div>
+<label class="meta" for="sId" style="margin-top:10px;display:block">Student ID *</label><input id="sId"><div class="err" id="eId"></div><br>
+<div class="modal-actions"><button class="btn" onclick="saveProfile()">Save changes</button></div></div>
+<div class="card" data-reveal style="margin-top:14px"><h2>My permissions</h2><p class="meta">Granted by staff. Uploads need approval before going live.</p><div id="myPerms" style="margin-top:8px"></div></div>
+<div class="card" data-reveal style="margin-top:14px"><h2>Notifications</h2><p class="meta">Choose what lands in your 🔔 bell.</p>
+<div class="pref"><input type="checkbox" id="pUploads"><label for="pUploads">My uploads approved / removed</label></div>
+<div class="pref"><input type="checkbox" id="pReports"><label for="pReports">My reports resolved</label></div>
+<div class="pref"><input type="checkbox" id="pRooms"><label for="pRooms">Rooms I host are closed + announcements</label></div>
+<div class="modal-actions"><button class="btn" onclick="savePrefs()">Save preferences</button></div></div>
+<div class="card" data-reveal style="margin-top:14px"><h2>Account</h2>
+<div class="set-row"><div class="grow"><b>Logout</b><p class="meta">Sign out on this browser.</p></div><button class="btn ghost" onclick="doLogout()">Logout</button></div>
+<div class="danger-zone"><b>Delete account</b><p class="meta">Removes your login. Optionally wipe everything you posted first.</p><div class="modal-actions"><button class="btn ghost" onclick="wipeMine()">Wipe my content</button> <button class="btn danger" onclick="delAccount()">Delete my account</button></div></div>
+</div>
+</div></main>
+<div class="footer">UIU Dock • Settings</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="js/seed.js"></script><script src="js/store.js"></script>
+<script>document.documentElement.classList.add('js');
+let db=getDB();
+function paint(){
+  db=getDB();const u=db.user;
+  if(!u||u.role!=='student'){location.href='login.html';return;}
+  document.getElementById('gate').innerHTML='';
+  document.getElementById('body').style.display='block';
+  document.getElementById('who').textContent='Signed in as '+u.name;
+  if(!document.getElementById('sName').value){
+    document.getElementById('sName').value=u.name;
+    const acc=db.accounts.find(a=>a.name===u.name);
+    document.getElementById('sId').value=acc?acc.sid:'';
+  }
+  const p=db.prefs[u.name]||{};
+  document.getElementById('pUploads').checked=p.uploads!==false;
+  document.getElementById('pReports').checked=p.reports!==false;
+  document.getElementById('pRooms').checked=p.rooms!==false;
+  document.getElementById('myPerms').innerHTML=
+   `<p style="font-size:14px">📤 Upload resources: <b>${canUpload(u.name)?'Allowed':'Revoked'}</b></p>`+
+   `<p style="font-size:14px">📚 Add courses: <b>${canAddCourse(u.name)?'Allowed':'Not granted'}</b></p>`+
+   `<p class="meta">Ask staff to change these.</p>`;
+}
+function saveProfile(){
+  const u=db.user;const n=document.getElementById('sName').value.trim(),id=document.getElementById('sId').value.trim();
+  showErr('eName',n?'':'Enter a display name.');showErr('eId',id?'':'Enter your student ID.');
+  if(!n||!id)return;
+  if(n!==u.name){const r=renameMember(u.name,n);if(!r.ok){showErr('eName',r.msg);return;}}
+  db=getDB();const acc=db.accounts.find(a=>a.name===n);if(acc){acc.sid=id;saveDB(db);}
+  toast('Profile saved');paint();
+}
+function savePrefs(){
+  const u=db.user.name;db=getDB();
+  db.prefs[u]={uploads:document.getElementById('pUploads').checked,reports:document.getElementById('pReports').checked,rooms:document.getElementById('pRooms').checked};
+  saveDB(db);toast('Preferences saved');
+}
+function doLogout(){logout();location.href='index.html';}
+function wipeMine(){
+  const n=db.user.name;if(!confirm('Delete everything posted by '+n+'?'))return;
+  db.resources=db.resources.filter(r=>r.by!==n);db.rooms=db.rooms.filter(r=>r.host!==n);
+  Object.keys(db.msgs).forEach(c=>{db.msgs[c]=db.msgs[c].filter(m=>m.u!==n);});
+  logAudit('Member wiped own content',n);saveDB(db);toast('Your content was removed');
+}
+function delAccount(){
+  const n=db.user.name;if(!confirm('Delete your account '+n+'? You will be logged out.'))return;
+  db.accounts=db.accounts.filter(a=>a.name!==n);delete db.prefs[n];db.user=null;saveDB(db);
+  location.href='index.html';
+}
+paint();
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
+document.querySelectorAll('[data-reveal]').forEach(el=>io.observe(el));</script>
+</body></html>

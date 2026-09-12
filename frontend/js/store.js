@@ -18,6 +18,9 @@ function migrateDB(d){
   if(!Array.isArray(d.suspended))d.suspended=[];
   if(!d.muted||typeof d.muted!=='object')d.muted={};
   if(!Array.isArray(d.audit))d.audit=seedAudit();
+  if(!Array.isArray(d.notifs))d.notifs=seedNotifs();
+  if(!d.prefs||typeof d.prefs!=='object')d.prefs={};
+  if(!d.perms||typeof d.perms!=='object')d.perms={upload:{},courses:{}};
   Object.keys(d.msgs||{}).forEach(c=>{(d.msgs[c]||[]).forEach(m=>{if(m.id==null)m.id='m'+(__mid++);});});
   return d;
 }
@@ -53,6 +56,51 @@ function isMuted(name){
 function muteUser(name,days){
   const db=getDB();db.muted[name]=Date.now()+(days||7)*864e5;saveDB(db);
   logAudit('Muted user ('+(days||7)+' days)',name);
+}
+function seedNotifs(){
+  return [{id:'n0',for:null,type:'rooms',text:'Welcome to UIU Dock — create an account to upload, join rooms and chat.',link:'login.html',at:'Today 09:00 AM',readBy:[]}];
+}
+/* Notifications: for=null broadcasts to every member */
+function notify(name,type,text,link){
+  try{const db=getDB();
+  if(name){const p=db.prefs[name];if(p&&p[type]===false)return;}
+  db.notifs.unshift({id:'n'+Date.now()+Math.floor(Math.random()*999),for:name||null,type:type||'general',text,link:link||'',at:new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}),readBy:[]});
+  db.notifs=db.notifs.slice(0,80);saveDB(db);paintNotifs();}catch(e){}
+}
+function myNotifs(){
+  try{const db=getDB();const me=db.user?db.user.name:null;if(!me)return [];
+  return db.notifs.filter(n=>!n.for||n.for===me);}catch(e){return [];}
+}
+function unreadNotifs(){const me=currentUser();if(!me)return 0;return myNotifs().filter(n=>(n.readBy||[]).indexOf(me.name)===-1).length;}
+function markNotifsRead(){
+  try{const db=getDB();const me=db.user?db.user.name:null;if(!me)return;
+  db.notifs.forEach(n=>{n.readBy=n.readBy||[];if((!n.for||n.for===me)&&n.readBy.indexOf(me)===-1)n.readBy.push(me);});
+  saveDB(db);paintNotifs();}catch(e){}
+}
+/* Permissions: upload defaults allow (unless revoked/suspended); add-course defaults deny */
+function canUpload(name){try{const db=getDB();if(db.suspended.includes(name))return false;return db.perms.upload[name]!==false;}catch(e){return true;}}
+function canAddCourse(name){try{const db=getDB();if(db.suspended.includes(name))return false;return db.perms.courses[name]===true;}catch(e){return false;}}
+function setPerm(name,kind,allow){
+  const db=getDB();db.perms[kind]=db.perms[kind]||{};db.perms[kind][name]=!!allow;saveDB(db);
+  logAudit((allow?'Granted ':'Revoked ')+(kind==='upload'?'upload permission':'course-add permission'),name);
+}
+/* Rename a member everywhere (user, accounts, content, reports, prefs) */
+function renameMember(oldName,newName){
+  const db=getDB();newName=(newName||'').trim();
+  if(!newName||newName===oldName)return {ok:false,msg:'Enter a different name.'};
+  if(db.accounts.some(a=>a.name.toLowerCase()===newName.toLowerCase()))return {ok:false,msg:'That name is taken.'};
+  db.accounts.forEach(a=>{if(a.name===oldName)a.name=newName;});
+  if(db.user&&db.user.name===oldName)db.user.name=newName;
+  db.resources.forEach(r=>{if(r.by===oldName)r.by=newName;});
+  db.rooms.forEach(r=>{if(r.host===oldName)r.host=newName;});
+  Object.keys(db.msgs).forEach(c=>db.msgs[c].forEach(m=>{if(m.u===oldName)m.u=newName;}));
+  db.reports.forEach(r=>{if(r.by===oldName)r.by=newName;});
+  if(db.prefs[oldName]){db.prefs[newName]=db.prefs[oldName];delete db.prefs[oldName];}
+  ['upload','courses'].forEach(k=>{if(db.perms[k]&&db.perms[k][oldName]!==undefined){db.perms[k][newName]=db.perms[k][oldName];delete db.perms[k][oldName];}});
+  if(db.suspended.includes(oldName)){db.suspended=db.suspended.filter(x=>x!==oldName);db.suspended.push(newName);}
+  if(db.muted[oldName]){db.muted[newName]=db.muted[oldName];delete db.muted[oldName];}
+  logAudit('Renamed member',oldName+' → '+newName);
+  saveDB(db);return {ok:true};
 }
 function fileReport(kind,info){
   const db=getDB();
@@ -131,14 +179,40 @@ function hideAdminTraces(){
   const nav=document.getElementById('mainNav');
   if(nav)nav.querySelectorAll('a[href="admin.html"]').forEach(a=>a.remove());
 }
-/* Show signed-in name on every page's Login link (was home-only) */
+/* Show signed-in name on every page's Login link → opens Settings */
 function paintAuth(){
   const u=currentUser();if(!u)return;
   const link=document.getElementById('loginLink')||(document.getElementById('mainNav')||document).querySelector('a[href="login.html"]');
-  if(link)link.textContent='Hi, '+u.name;
+  if(link){link.textContent='Hi, '+u.name;link.setAttribute('href','settings.html');link.removeAttribute('id');}
 }
+/* Notification bell (student pages): badge + dropdown, mark-read on open */
+function paintNotifs(){
+  const btn=document.getElementById('notifBtn');if(!btn)return;
+  const u=currentUser();
+  const wrap=btn.closest('.notif-wrap');
+  if(!u){if(wrap)wrap.style.display='none';return;}
+  if(wrap)wrap.style.display='';
+  const n=unreadNotifs();
+  const badge=document.getElementById('notifCount');
+  if(badge){badge.textContent=n>9?'9+':String(n);badge.style.display=n?'grid':'none';}
+  const panel=document.getElementById('notifPanel');
+  if(panel){
+    const list=myNotifs().slice(0,12);
+    panel.innerHTML=`<div class="notif-head"><b>Notifications</b><button onclick="markNotifsRead()">Mark all read</button></div>`+
+    (list.map(x=>{const unread=(x.readBy||[]).indexOf(u.name)===-1;
+      return `<a class="notif-item${unread?' unread':''}" href="${escapeHTML(x.link||'#')}"><span class="notif-dot"></span><span><span class="notif-text">${escapeHTML(x.text)}</span><small>${escapeHTML(x.at)}</small></span></a>`;}).join('')||'<p class="meta" style="padding:12px 14px">All caught up 🎉</p>');
+  }
+}
+function toggleNotifs(e){
+  if(e)e.stopPropagation();
+  const panel=document.getElementById('notifPanel');if(!panel)return;
+  const open=panel.classList.toggle('open');
+  if(open)markNotifsRead();
+}
+document.addEventListener('click',e=>{const p=document.getElementById('notifPanel');if(p&&p.classList.contains('open')&&!e.target.closest('.notif-wrap'))p.classList.remove('open');});
 document.addEventListener('DOMContentLoaded',hideAdminTraces);
 document.addEventListener('DOMContentLoaded',paintAuth);
+document.addEventListener('DOMContentLoaded',paintNotifs);
 function validURL(v){if(!v)return true;try{new URL(v.startsWith('http')?v:'https://'+v);return true;}catch(e){return false;}}
 function escapeHTML(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function linkHref(v){if(!v)return '';return /^https?:\/\//i.test(v)?v:'https://'+v;}

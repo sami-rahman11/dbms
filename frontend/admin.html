@@ -16,6 +16,7 @@
 <div class="admin-tabs" role="tablist" aria-label="Moderation areas">
 <button data-tab="overview" class="active" onclick="tab('overview')">Overview</button>
 <button data-tab="resources" onclick="tab('resources')">Resources <span class="count" id="cRes">0</span></button>
+<button data-tab="courses" onclick="tab('courses')">Courses <span class="count" id="cCourse">0</span></button>
 <button data-tab="rooms" onclick="tab('rooms')">Study Rooms <span class="count" id="cRoom">0</span></button>
 <button data-tab="chats" onclick="tab('chats')">Help Chats <span class="count" id="cChat">0</span></button>
 <button data-tab="reports" onclick="tab('reports')">Reports <span class="count" id="cRep">0</span></button>
@@ -39,6 +40,12 @@
 <div class="tbl-wrap"><table class="tbl"><caption>Student uploads awaiting approval</caption><thead><tr><th scope="col">Title</th><th scope="col">Course</th><th scope="col">By</th><th scope="col">Action</th></tr></thead><tbody id="mod"></tbody></table></div>
 <h2>Published resources</h2>
 <div class="tbl-wrap"><table class="tbl"><caption>Live resources — remove outdated or reported items</caption><thead><tr><th scope="col">Title</th><th scope="col">Course</th><th scope="col">By</th><th scope="col">⬇</th><th scope="col">Action</th></tr></thead><tbody id="all"></tbody></table></div>
+</section>
+<section class="admin-pane" id="pane-courses">
+<h2>Course catalog</h2>
+<p class="meta">Add courses (instantly live in filters + Help Desk) or remove empty ones.</p>
+<div class="toolbar"><input id="ncCode" placeholder="Code — e.g. CSE 341" style="max-width:180px" aria-label="Course code"><input id="ncTitle" placeholder="Title — e.g. Machine Learning" style="flex:1;min-width:200px" aria-label="Course title"><input id="ncSem" placeholder="Semester" value="Summer 2026" style="max-width:160px" aria-label="Semester"><button class="btn" onclick="adminAddCourse()">+ Add course</button></div>
+<div class="tbl-wrap"><table class="tbl"><caption>All courses with usage</caption><thead><tr><th scope="col">Code</th><th scope="col">Title</th><th scope="col">Semester</th><th scope="col">Used in</th><th scope="col">Action</th></tr></thead><tbody id="courseRows"></tbody></table></div>
 </section>
 <section class="admin-pane" id="pane-rooms">
 <h2>Study room moderation</h2>
@@ -98,6 +105,7 @@ function counts(){
   const open=db.reports.filter(r=>r.status==='open').length;
   const msgs=Object.values(db.msgs).flat().length;
   document.getElementById('cRes').textContent=pend;
+  document.getElementById('cCourse').textContent=db.courses.length;
   document.getElementById('cRoom').textContent=db.rooms.length;
   document.getElementById('cChat').textContent=msgs;
   document.getElementById('cRep').textContent=open;
@@ -163,7 +171,30 @@ function muteUserMsg(course,id){const m=(db.msgs[course]||[]).find(x=>String(x.i
   document.getElementById('repRows').innerHTML=db.reports.map(r=>`<tr class="${r.status==='open'?'report-open':'report-done'}"><td>${escapeHTML(r.kind)}</td><td>${escapeHTML(r.label)}${r.course?' ('+escapeHTML(r.course)+')':''}</td><td>${escapeHTML(r.by)}</td><td>${escapeHTML(r.reason)}</td><td><span class="badge ${r.status==='open'?'pend':'ok'}">${escapeHTML(r.status)}</span></td><td class="mod-row">${r.status==='open'?`<button class="btn small" onclick="resolveRep('${r.id}')">Resolve</button>`:''}<button class="btn small ghost" onclick="delRep('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No reports. Students can file them from Resources, Rooms and Help Chats.</td></tr>';
   const users=collectUsers();
   document.getElementById('userRows').innerHTML=users.map(u=>{const susp=db.suspended.includes(u.name);
-    return `<tr><td>${escapeHTML(u.name)}</td><td>${u.res}</td><td>${u.rooms}</td><td>${u.msgs}</td><td><span class="badge ${susp?'pend':'ok'}">${susp?'suspended':'active'}</span></td><td class="mod-row">${susp?`<button class="btn small" onclick="unsuspend('${escapeHTML(u.name)}')">Unsuspend</button>`:`<button class="btn small ghost" onclick="suspend('${escapeHTML(u.name)}')">Suspend</button>`} <button class="btn small ghost" onclick="wipeUser('${escapeHTML(u.name)}')">Wipe content</button></td></tr>`;}).join('')||'<tr><td colspan="6">No contributors yet.</td></tr>';
+    const up=canUpload(u.name),cp=canAddCourse(u.name);
+    return `<tr><td>${escapeHTML(u.name)}</td><td>${u.res}</td><td>${u.rooms}</td><td>${u.msgs}</td><td><span class="badge ${susp?'pend':'ok'}">${susp?'suspended':'active'}</span></td><td class="mod-row">${susp?`<button class="btn small" onclick="unsuspend('${escapeHTML(u.name)}')">Unsuspend</button>`:`<button class="btn small ghost" onclick="suspend('${escapeHTML(u.name)}')">Suspend</button>`} <button class="btn small ghost" onclick="wipeUser('${escapeHTML(u.name)}')">Wipe content</button><br><button class="btn small ${up?'ghost':''}" onclick="setPermU('${escapeHTML(u.name)}','upload')">${up?'Revoke upload':'Allow upload'}</button> <button class="btn small ${cp?'':'ghost'}" onclick="setPermU('${escapeHTML(u.name)}','courses')">${cp?'Revoke courses':'Allow courses'}</button></td></tr>`;}).join('')||'<tr><td colspan="6">No contributors yet.</td></tr>';
+  document.getElementById('courseRows').innerHTML=db.courses.map(c=>{
+    const uses=db.resources.filter(r=>r.c===c.code).length+db.rooms.filter(r=>r.c===c.code).length+(db.msgs[c.code]||[]).length;
+    return `<tr><td>${escapeHTML(c.code)}</td><td>${escapeHTML(c.title)}</td><td>${escapeHTML(c.semester||'')}</td><td>${uses} item${uses===1?'':'s'}</td><td>${uses?'<span class="meta">in use</span>':`<button class="btn small ghost" onclick="delCourse('${escapeHTML(c.code)}')">Remove</button>`}</td></tr>`;}).join('');
+}
+function setPermU(name,kind){
+  const now=kind==='upload'?canUpload(name):canAddCourse(name);
+  setPerm(name,kind,!now);saveDB(db);renderAll();
+  toast((!now?'Granted ':'Revoked ')+name+' — '+(kind==='upload'?'uploads':'course adds'));
+}
+function adminAddCourse(){
+  const code=document.getElementById('ncCode').value.trim().toUpperCase(),title=document.getElementById('ncTitle').value.trim(),sem=document.getElementById('ncSem').value.trim()||'Summer 2026';
+  if(!code||!title){toast('Enter course code and title');return;}
+  if(db.courses.some(c=>c.code.toLowerCase()===code.toLowerCase())){toast('That course already exists');return;}
+  db.courses.push({code,title,semester:sem});logAudit('Added course',code+' — '+title);saveDB(db);
+  document.getElementById('ncCode').value='';document.getElementById('ncTitle').value='';
+  renderAll();toast(code+' added');
+}
+function delCourse(code){
+  const uses=db.resources.filter(r=>r.c===code).length+db.rooms.filter(r=>r.c===code).length+(db.msgs[code]||[]).length;
+  if(uses){toast('Course in use — remove its content first');return;}
+  if(!confirm('Remove course '+code+'?'))return;
+  db.courses=db.courses.filter(c=>c.code!==code);logAudit('Removed course',code);saveDB(db);renderAll();toast(code+' removed');
 }
 function collectUsers(){
   const map={};
@@ -224,28 +255,29 @@ function flagRemove(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.it
 function flagBan(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
   if(!confirm('Ban '+o.name+'? They lose upload/join/chat access.'))return;
   if(!db.suspended.includes(o.name))db.suspended.push(o.name);
-  flagResolveGroup(g);logAudit('Banned user',o.name+' @ '+(g.course||''));saveDB(db);renderAll();toast(o.name+' banned');}
+  flagResolveGroup(g);logAudit('Banned user',o.name+' @ '+(g.course||''));notify(o.name,'general','You were banned by staff — upload, join and chat are blocked','index.html');saveDB(db);renderAll();toast(o.name+' banned');}
 function flagMute(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
   if(!confirm('Mute '+o.name+' for 7 days? They can read but not send.'))return;
-  muteUser(o.name,7);flagResolveGroup(g);saveDB(db);renderAll();toast(o.name+' muted 7 days');}
+  muteUser(o.name,7);flagResolveGroup(g);notify(o.name,'general','You were muted for 7 days by staff','help-desk.html');saveDB(db);renderAll();toast(o.name+' muted 7 days');}
 function flagDismiss(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
-  flagResolveGroup(g);logAudit('Dismissed false alarm',o.name+' @ '+(g.course||''));saveDB(db);renderAll();toast('Dismissed as false alarm');}
-function ap(id){const r=db.resources.find(x=>x.id===id);if(!r)return;r.status='approved';logAudit('Approved resource',r.t+' ('+r.c+')');saveDB(db);renderAll();toast('Approved');}
+  flagResolveGroup(g);logAudit('Dismissed false alarm',o.name+' @ '+(g.course||''));[...new Set(g.items.map(r=>r.by))].forEach(b=>notify(b,'reports','Update: a report you filed was reviewed (no violation found)','help-desk.html'));saveDB(db);renderAll();toast('Dismissed as false alarm');}
+function linkByKind(kind){return {complaint:'complain.html',resource:'resources.html',room:'rooms.html',message:'help-desk.html'}[kind]||'index.html';}
+function ap(id){const r=db.resources.find(x=>x.id===id);if(!r)return;r.status='approved';logAudit('Approved resource',r.t+' ('+r.c+')');notify(r.by,'uploads','Approved: "'+r.t+'" is now live in '+r.c,'resources.html');saveDB(db);renderAll();toast('Approved');}
 function askRj(id){const r=db.resources.find(x=>x.id===id);if(!r)return;if(!confirm('Reject and remove "'+r.t+'"?'))return;
-  db.resources=db.resources.filter(x=>x.id!==id);logAudit('Rejected resource',r.t+' ('+r.c+')');saveDB(db);renderAll();toast('Rejected/removed');}
+  db.resources=db.resources.filter(x=>x.id!==id);logAudit('Rejected resource',r.t+' ('+r.c+')');notify(r.by,'uploads','Not approved: "'+r.t+'" was rejected by staff','resources.html');saveDB(db);renderAll();toast('Rejected/removed');}
 function delRes(id){const r=db.resources.find(x=>x.id===id);if(!r)return;if(!confirm('Remove "'+r.t+'" from the hub?'))return;
-  lastDeleted={type:'res',item:r};db.resources=db.resources.filter(x=>x.id!==id);logAudit('Removed resource',r.t);saveDB(db);renderAll();toast('Resource removed',undoDel);}
+  lastDeleted={type:'res',item:r};db.resources=db.resources.filter(x=>x.id!==id);logAudit('Removed resource',r.t);notify(r.by,'uploads','Removed by staff: "'+r.t+'"','resources.html');saveDB(db);renderAll();toast('Resource removed',undoDel);}
 function delRoom(id){const r=db.rooms.find(x=>x.id===id);if(!r)return;if(!confirm('Close room "'+r.t+'"? Members lose access.'))return;
-  lastDeleted={type:'room',item:r};db.rooms=db.rooms.filter(x=>x.id!==id);logAudit('Closed room',r.t+' ('+r.c+')');saveDB(db);renderAll();toast('Room closed',undoDel);}
+  lastDeleted={type:'room',item:r};db.rooms=db.rooms.filter(x=>x.id!==id);logAudit('Closed room',r.t+' ('+r.c+')');notify(r.host,'rooms','Closed by staff: "'+r.t+'"','rooms.html');saveDB(db);renderAll();toast('Room closed',undoDel);}
 function delMsg(course,id){const list=db.msgs[course]||[];const m=list.find(x=>String(x.id)===String(id));if(!m)return;if(!confirm('Delete this message from '+course+'?'))return;
-  db.msgs[course]=list.filter(x=>String(x.id)!==String(id));logAudit('Removed message',m.u+' @ '+course);saveDB(db);renderAll();toast('Message deleted');}
+  db.msgs[course]=list.filter(x=>String(x.id)!==String(id));logAudit('Removed message',m.u+' @ '+course);notify(m.u,'general','A message of yours in '+course+' was removed by staff','help-desk.html');saveDB(db);renderAll();toast('Message deleted');}
 function clearChat(course){if(!confirm('Clear ALL messages in '+course+'?'))return;
   db.msgs[course]=[];logAudit('Cleared chat',course);saveDB(db);renderAll();toast('Chat cleared');}
-function resolveRep(id){const r=db.reports.find(x=>String(x.id)===String(id));if(r){r.status='resolved';logAudit('Resolved report',r.kind+': '+r.label);saveDB(db);renderAll();}}
+function resolveRep(id){const r=db.reports.find(x=>String(x.id)===String(id));if(r){r.status='resolved';logAudit('Resolved report',r.kind+': '+r.label);notify(r.by,'reports','Resolved: '+r.kind+' — '+r.label,linkByKind(r.kind));saveDB(db);renderAll();}}
 function delRep(id){db.reports=db.reports.filter(x=>String(x.id)!==String(id));saveDB(db);renderAll();}
 function suspend(name){if(!confirm('Suspend '+name+'? They cannot upload, join or chat.'))return;
-  if(!db.suspended.includes(name))db.suspended.push(name);logAudit('Suspended user',name);saveDB(db);renderAll();toast(name+' suspended');}
-function unsuspend(name){db.suspended=db.suspended.filter(x=>x!==name);logAudit('Reinstated user',name);saveDB(db);renderAll();toast(name+' reinstated');}
+  if(!db.suspended.includes(name))db.suspended.push(name);logAudit('Suspended user',name);notify(name,'general','Your account was suspended by staff','index.html');saveDB(db);renderAll();toast(name+' suspended');}
+function unsuspend(name){db.suspended=db.suspended.filter(x=>x!==name);logAudit('Reinstated user',name);notify(name,'general','Your account was reinstated — welcome back','index.html');saveDB(db);renderAll();toast(name+' reinstated');}
 function wipeUser(name){if(!confirm('Delete ALL content by '+name+' (resources, rooms, messages)?'))return;
   lastDeleted={type:'user',name,snapshot:JSON.stringify(db)};db.resources=db.resources.filter(r=>r.by!==name);
   db.rooms=db.rooms.filter(r=>r.host!==name);

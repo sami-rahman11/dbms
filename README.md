@@ -10,15 +10,20 @@ Three pillars in one dock:
 
 1. **Resource Hub** — searchable, versioned course materials (notes, slides,
    past questions, lab sheets, links) with ratings, download tracking and
-   staff moderation.
+   staff moderation. Members with permission can propose new courses.
 2. **Study Rooms** — course-specific virtual rooms with scheduling, capacity,
    host controls and attendance.
 3. **Help Desk** — persistent **per-course group chats** (pick a course →
-   enter its chat) with presence, searchable history and staff moderation
-   (flag review, ban, timed mute, audit trail).
+   enter its chat) with file staging, code snippets, searchable history and
+   staff moderation (flag review, ban, timed mute, audit trail).
+
+Plus: notification bell (approvals, resolutions, announcements),
+**Settings** (rename, student ID, notification prefs, account),
+**Complain Box** (direct line to the staff inbox).
 
 Staff get a separate console (own theme, own sign-in) with approve/reject,
-room/chat moderation, a reports inbox, user suspend/wipe and analytics.
+course catalog, room/chat moderation, a reports inbox, per-user
+upload/course-add permissions, suspend/wipe and analytics.
 Students never see admin UI.
 
 ## Tech stack
@@ -36,10 +41,12 @@ Students never see admin UI.
 dbms/
 ├── frontend/          # the web app (open index.html)
 │   ├── index.html     # landing
-│   ├── resources.html # Resource Hub
+│   ├── resources.html # Resource Hub (+ propose courses)
 │   ├── rooms.html     # Study Rooms
-│   ├── help-desk.html # course-wise group chats
+│   ├── help-desk.html # course-wise group chats (files + code)
 │   ├── login.html     # student login + create account
+│   ├── settings.html  # profile, prefs, account
+│   ├── complain.html  # complaint box → staff inbox
 │   ├── admin.html     # separate staff console + sign-in
 │   ├── css/styles.css
 │   └── js/            # seed.js (demo data), store.js (persistence, auth, gates)
