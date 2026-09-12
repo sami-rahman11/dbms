@@ -1,5 +1,7 @@
 # UIU Dock
 
+**Live demo:** https://sami-rahman11.github.io/dbms/
+
 A database-driven course resource center, online group study and course-wise
 help platform for UIU students — built as a **Database Management System Lab**
 project (Summer 2026).
