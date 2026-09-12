@@ -1,14 +1,14 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Login - UIU Dock</title>
 <meta name="description" content="Student login and account creation for UIU Dock.">
-<meta name="theme-color" content="#A63608">
+<meta name="theme-color" content="#070B1F">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css"></head><body class="pg-login">
 <a class="skip-link" href="#main">Skip to content</a>
-<header class="topbar"><div class="topbar-inner"><div class="logo">UIU <span>Dock</span></div>
-<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav">☰ Menu</button>
-<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="complain.html">Complain</a><a href="login.html" class="active" aria-current="page">Login</a></nav><div class="notif-wrap"><button id="notifBtn" onclick="toggleNotifs(event)" aria-label="Notifications">🔔<span id="notifCount"></span></button><div id="notifPanel"></div></div></div></header>
+<header class="topbar"><div class="topbar-inner"><a class="logo" href="index.html" aria-label="UIU Dock home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h18"/><path d="M6 13v6"/><path d="M12 13v6"/><path d="M18 13v6"/><path d="M7 9l5-4 5 4"/></svg></span>UIU <span>Dock</span></a>
+<button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mainNav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg> Menu</button>
+<nav class="nav" id="mainNav" aria-label="Main"><a href="index.html">Home</a><a href="resources.html">Resources</a><a href="rooms.html">Study Rooms</a><a href="help-desk.html">Help Desk</a><a href="complain.html">Complain</a><a href="login.html" class="active" aria-current="page">Login</a></nav><div class="notif-wrap"><button id="notifBtn" onclick="toggleNotifs(event)" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span id="notifCount"></span></button><div id="notifPanel"></div></div></div></header>
 <main class="wrap wrap-narrow" id="main"><div class="page-head" data-reveal><div class="icon-badge ib-hub"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div><h1>Join UIU Dock</h1><p class="meta">Log in, or create a free student account to upload, join rooms and chat.</p></div></div>
 <div class="card p-hub" data-reveal style="margin-top:14px" id="sessionCard" hidden>
 <h2>You are signed in</h2><p class="meta" id="sessionWho"></p><br>
