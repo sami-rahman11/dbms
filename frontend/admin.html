@@ -143,7 +143,7 @@ function msgCard(course,m){
   return `<div class="flag-card slim">
    <div class="flag-user"><span class="avatar">${escapeHTML(String(m.u).trim().charAt(0).toUpperCase())}</span>
     <span class="flag-name">${escapeHTML(m.u)}</span><span class="flag-alias">(${acc?'SID: '+escapeHTML(acc.sid):'Unverified alias'})</span><span class="flag-trust">Trust Score: ${trust}/100</span><span class="flag-time">${escapeHTML(m.t)}</span></div>
-   <div class="flag-quote">${escapeHTML(m.x)}</div>
+   <div class="flag-quote">${escapeHTML(m.x)}${(m.atts||[]).length?`<br><small>📎 ${(m.atts||[]).length} attachment(s): ${escapeHTML((m.atts||[]).map(a=>a.name).join(', '))}</small>`:''}</div>
    <div class="flag-actions">
     <button class="btn small" onclick="delMsg('${course}','${m.id}')">Remove Message</button>
     <button class="btn small navy" onclick="banUserMsg('${course}','${m.id}')">Ban ${escapeHTML(String(m.u).split(' ')[0])}</button>

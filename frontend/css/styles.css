@@ -205,7 +205,29 @@ details.filters-box summary{cursor:pointer;font-weight:700;font-size:14px}
 .msg{max-width:76%;padding:10px 14px;border-radius:14px 14px 14px 5px;font-size:14px;background:#ECEEFA;color:#1A2049;box-shadow:0 2px 8px rgba(16,21,58,.08)}
 .msg.me{align-self:flex-end;background:linear-gradient(135deg,#C2410C,#9A3412);color:#fff;border-radius:14px 14px 5px 14px;box-shadow:0 8px 20px rgba(154,52,18,.3)}
 .msg small{display:block;font-size:11px;opacity:.8;margin-top:3px}
-.chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);background:#fff}
+.msg-body{margin:2px 0}
+.msg pre{background:#0B1026;color:#E5E7EB;border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.5;overflow:auto;margin:6px 0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap}
+.msg.me pre{background:rgba(0,0,0,.28)}
+.att-chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;background:rgba(0,0,0,.08);border-radius:99px;padding:3px 10px;margin:4px 6px 0 0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msg.me .att-chip{background:rgba(255,255,255,.2)}
+/* ---------- composer: staged files + tool buttons + send ---------- */
+.composer{border-top:1px solid var(--line);background:#fff;padding:10px 14px 12px}
+.staged-row{display:none;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 2px 10px}
+.staged-row.has{display:flex}
+.staged-label{font-size:12.5px;font-weight:700;color:var(--ink2)}
+.staged-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#F6F7FC;border-radius:9px;padding:6px 8px 6px 10px;max-width:230px}
+.staged-chip span:not(.staged-ico){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.staged-chip button{background:none;border:0;cursor:pointer;color:var(--muted);font-size:13px;padding:0 2px}
+.staged-chip button:hover{color:#B91C1C}
+.staged-chip.pic .staged-ico{color:#2563EB}
+.staged-chip.doc .staged-ico{color:#DC2626}
+.composer #in{width:100%;border:1px solid #B9BED6;border-radius:12px;background:#F1F2F9;padding:13px 15px;font-size:14px}
+.composer #in:focus{border-color:var(--orange-btn);box-shadow:0 0 0 4px rgba(255,106,0,.18);outline:none;background:#fff}
+.composer-actions{display:flex;align-items:center;gap:20px;margin-top:10px}
+.tool-btn{background:none;border:0;cursor:pointer;color:var(--ink2);font:inherit;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:7px;padding:4px 2px}
+.tool-btn:hover{color:var(--orange-btn-h)}
+.tool-btn svg{width:17px;height:17px;color:#1D4ED8}
+.composer-actions .btn{margin-left:auto}
 .toast{position:fixed;bottom:22px;right:22px;background:var(--navy-900);color:#fff;padding:13px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.12);z-index:200;max-width:min(420px,90vw);box-shadow:0 18px 44px rgba(7,11,31,.45);opacity:0;visibility:hidden;transform:translateY(10px) scale(.98);filter:blur(3px);transition:transform var(--dur-state) var(--ease),opacity var(--dur-state) var(--ease),filter var(--dur-state) var(--ease),visibility 0s linear var(--dur-state)}
 .toast.show{opacity:1;visibility:visible;transform:none;filter:blur(0)}
 
@@ -226,7 +248,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14px;background:#fff}
 /* ---------- guests: blurred chat + gate banner ---------- */
 body.guest .chat-layout{position:relative}
 body.guest .msgs,body.guest .course-list{filter:blur(8px);pointer-events:none;user-select:none}
-body.guest .chat-input{opacity:.5;pointer-events:none}
+body.guest .composer{opacity:.5;pointer-events:none}
 .guest-gate{display:none;background:linear-gradient(135deg,#0B1026,#1E2660);color:#fff;border-radius:16px;padding:22px 24px;margin:12px 0;align-items:center;gap:16px;flex-wrap:wrap;box-shadow:var(--shadow-m)}
 body.guest .guest-gate{display:flex}
 .guest-gate h2{color:#fff;margin:0 0 4px;font-size:18px}

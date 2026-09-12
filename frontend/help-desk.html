@@ -15,7 +15,18 @@
 <div class="chat-layout" data-reveal><div class="course-list" id="clist" role="listbox" aria-label="Courses"></div>
 <div class="chat-pane"><div class="chat-head"><b id="ctitle"></b> <span class="meta" id="csub"></span></div>
 <div class="msgs" id="msgs" aria-live="polite"></div>
-<div class="chat-input"><input id="in" placeholder="Ask a question in this course chat... (Enter to send)" aria-label="Message"><button class="btn" onclick="send()">Send</button></div></div></div></main>
+<div class="composer">
+<div class="staged-row" id="staged"></div>
+<input id="in" placeholder="Type an academic inquiry, message classmates, or share a solution..." aria-label="Message" autocomplete="off">
+<div class="composer-actions">
+<button class="tool-btn" onclick="document.getElementById('picUp').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>Upload Pictures</button>
+<button class="tool-btn" onclick="document.getElementById('docUp').click()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>Upload Documents</button>
+<button class="tool-btn" onclick="insertCode()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>Insert Code</button>
+<button class="btn" onclick="send()">Send ➤</button>
+</div>
+<input type="file" id="picUp" accept="image/*" multiple hidden>
+<input type="file" id="docUp" accept=".pdf,.doc,.docx,.txt,.md,.zip,.ppt,.pptx,.xls,.xlsx" multiple hidden>
+</div></div></div></main>
 <div class="footer">UIU Dock • Database Management System Lab • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="js/seed.js"></script><script src="js/store.js"></script>
 <script>document.documentElement.classList.add('js');
@@ -25,18 +36,48 @@ function renderList(){const q=document.getElementById('q').value.toLowerCase();
  document.getElementById('clist').innerHTML=list.map(c=>{const n=(db.msgs[c.code]||[]).length;
  return `<button class="course-item ${c.code===cur?'active':''}" role="option" aria-selected="${c.code===cur}" onclick="sel('${escapeHTML(c.code)}')"><b>${escapeHTML(c.code)}</b><small>${escapeHTML(c.title)} • ${n} msgs</small></button>`;}).join('')||'<p class="meta" style="padding:14px">No courses match.</p>';}
 function sel(code){cur=code;renderChat();renderList();pulseChatHead();}
+function fmtBody(x){
+  let h=escapeHTML(x||'');
+  h=h.replace(/```(\w*)\n?([\s\S]*?)```/g,function(_,lang,code){return `<pre data-lang="${escapeHTML(lang||'code')}">${code.replace(/^\n+|\n+$/g,'')}</pre>`;});
+  return h;
+}
+function attChips(atts){
+  return (atts||[]).map(a=>`<span class="att-chip ${a.kind}">${a.kind==='pic'?'🖼':'📄'} ${escapeHTML(a.name)}</span>`).join('');
+}
+let staged=[];
+function renderStaged(){
+  const box=document.getElementById('staged');
+  box.classList.toggle('has',staged.length>0);
+  box.innerHTML=(staged.length?'<span class="staged-label">📌 Staged:</span>':'')+staged.map((a,i)=>`<span class="staged-chip ${a.kind}"><span class="staged-ico">${a.kind==='pic'?'🖼':'📄'}</span> ${escapeHTML(a.name)} <button onclick="dropStaged(${i})" aria-label="Remove ${escapeHTML(a.name)}">✕</button></span>`).join('');
+}
+function dropStaged(i){staged.splice(i,1);renderStaged();}
+function stageFiles(files,kind){
+  [...files].slice(0,5-staged.length).forEach(f=>staged.push({name:f.name,kind}));
+  if(files.length&&staged.length>=5)toast('Max 5 staged files (demo)');
+  renderStaged();
+}
+function insertCode(){
+  const el=document.getElementById('in');
+  const snippet='```sql\nSELECT * FROM CourseHelpMessage WHERE course_code = \'CSE 222\';\n```';
+  const s=el.selectionStart||el.value.length,e=el.selectionEnd||el.value.length;
+  el.value=el.value.slice(0,s)+(el.value.slice(0,s)&&!el.value.slice(0,s).endsWith('\n')?'\n':'')+snippet+'\n'+el.value.slice(e);
+  el.focus();
+}
 function renderChat(){const c=db.courses.find(x=>x.code===cur);document.getElementById('ctitle').textContent=c.code+' — '+c.title;
  document.getElementById('csub').textContent='● online (demo) • persistent history';
  const mq=(document.getElementById('mq').value||'').toLowerCase();const me=db.user?db.user.name:'You';
  const list=(db.msgs[cur]||[]).filter(m=>!mq||(m.u+m.x).toLowerCase().includes(mq));
-  document.getElementById('msgs').innerHTML=list.map(m=>`<div class="msg ${m.u===me?'me':''}"><b class="msg-name">${escapeHTML(m.u)}</b>${escapeHTML(m.x)}<small>${escapeHTML(m.t)}${m.u!==me?` • <a href="#" onclick="repMsg('${cur}','${m.id}');return false;" style="text-decoration:underline">Report</a>`:''}</small></div>`).join('')||'<div class="empty"><h2>No messages yet</h2><p>Start the discussion — ask the first question for '+escapeHTML(cur)+'.</p></div>';
+  document.getElementById('msgs').innerHTML=list.map(m=>`<div class="msg ${m.u===me?'me':''}"><b class="msg-name">${escapeHTML(m.u)}</b><div class="msg-body">${fmtBody(m.x)}</div>${attChips(m.atts)}<small>${escapeHTML(m.t)}${m.u!==me?` • <a href="#" onclick="repMsg('${cur}','${m.id}');return false;" style="text-decoration:underline">Report</a>`:''}</small></div>`).join('')||'<div class="empty"><h2>No messages yet</h2><p>Start the discussion — ask the first question for '+escapeHTML(cur)+'.</p></div>';
   const box=document.getElementById('msgs');box.scrollTop=box.scrollHeight;}
-function send(){const el=document.getElementById('in');const v=el.value.trim();if(!v){toast('Type a message first');el.focus();return;}
+function send(){const el=document.getElementById('in');const v=el.value.trim();
+ if(!v&&!staged.length){toast('Type a message or stage a file first');el.focus();return;}
  if(!requireAuth('Create an account to join the chat'))return;const me=db.user?db.user.name:'You';
  if(isSuspended(me)){toast('Your account is suspended — chat blocked.');return;}
  const mutedUntil=isMuted(me);if(mutedUntil){toast('You are muted until '+new Date(mutedUntil).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.');return;}
- (db.msgs[cur]=db.msgs[cur]||[]).push({id:'m'+Date.now(),u:me,x:v,t:new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})});
-  saveDB(db);el.value='';renderChat();renderList();markFreshMessage();}
+ (db.msgs[cur]=db.msgs[cur]||[]).push({id:'m'+Date.now(),u:me,x:v,atts:staged.slice(0,5),t:new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})});
+  saveDB(db);el.value='';staged=[];renderStaged();renderChat();renderList();markFreshMessage();}
+document.getElementById('picUp').addEventListener('change',e=>{if(!requireAuth('Create an account to share files')){e.target.value='';return;}stageFiles(e.target.files,'pic');e.target.value='';});
+document.getElementById('docUp').addEventListener('change',e=>{if(!requireAuth('Create an account to share files')){e.target.value='';return;}stageFiles(e.target.files,'doc');e.target.value='';});
 document.getElementById('in').addEventListener('keydown',e=>{if(e.key==='Enter')send();});
 function repMsg(course,id){if(!requireAuth('Create an account to report content'))return;const m=(db.msgs[course]||[]).find(x=>String(x.id)===String(id));if(!m)return;
  const reason=prompt('Report message by '+m.u+' — reason?','Spam / abusive / off-topic');if(reason===null)return;
