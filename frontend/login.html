@@ -20,15 +20,19 @@
 <button id="tabReg" onclick="ltab('reg')">Create account</button>
 </div>
 <div id="pane-login">
-<h2>Welcome back</h2><p class="meta">Mock student auth — stored in this browser.</p><br>
-<label class="meta" for="n">Display name *</label><input id="n" placeholder="e.g. Sami Rahman" autocomplete="name"><div class="err" id="eN"></div><br>
+<h2>Welcome back</h2><p class="meta">Use your student account password to sign in.</p><br>
+<label class="meta" for="n">Display name or Student ID *</label><input id="n" placeholder="e.g. Sami R. or 0112410312" autocomplete="username"><div class="err" id="eN"></div>
+<label class="meta" for="p" style="margin-top:10px;display:block">Password *</label><input id="p" type="password" placeholder="Enter your password" autocomplete="current-password"><div class="err" id="eP"></div><br>
 <div class="modal-actions"><button class="btn btn-block" onclick="doLogin()">Login →</button></div>
 <p class="meta" style="margin-top:12px">No account yet? <a href="#" onclick="ltab('reg');return false;" style="text-decoration:underline;font-weight:700">Create one — it takes 10 seconds.</a></p>
+<p class="meta" style="margin-top:8px">Demo only — passwords are hashed in this browser, not checked by a server.</p>
 </div>
 <div id="pane-reg" style="display:none">
-<h2>Create account</h2><p class="meta">Pick a display name + your student ID. Stored in this browser (demo).</p><br>
+<h2>Create account</h2><p class="meta">Create a student login with your display name, student ID and password.</p><br>
 <label class="meta" for="rN">Display name *</label><input id="rN" placeholder="e.g. Sami Rahman" autocomplete="name"><div class="err" id="eRN"></div>
-<label class="meta" for="rId" style="margin-top:10px;display:block">Student ID *</label><input id="rId" placeholder="e.g. 0112410312"><div class="err" id="eRId"></div><br>
+<label class="meta" for="rId" style="margin-top:10px;display:block">Student ID *</label><input id="rId" placeholder="e.g. 0112410312" autocomplete="username"><div class="err" id="eRId"></div>
+<label class="meta" for="rP" style="margin-top:10px;display:block">Password *</label><input id="rP" type="password" placeholder="Minimum 8 characters" autocomplete="new-password" minlength="8"><div class="err" id="eRP"></div>
+<label class="meta" for="rPC" style="margin-top:10px;display:block">Confirm password *</label><input id="rPC" type="password" placeholder="Re-enter your password" autocomplete="new-password" minlength="8"><div class="err" id="eRPC"></div><br>
 <div class="modal-actions"><button class="btn btn-block" onclick="doRegister()">Create account →</button></div>
 <p class="meta" style="margin-top:12px">Already registered? <a href="#" onclick="ltab('login');return false;" style="text-decoration:underline;font-weight:700">Log in.</a></p>
 </div>
@@ -51,19 +55,23 @@ function ltab(which){
   document.getElementById('pane-login').style.display=which==='login'?'block':'none';
   document.getElementById('pane-reg').style.display=which==='reg'?'block':'none';
 }
-function doLogin(){const n=document.getElementById('n').value.trim();
-  if(!n){showErr('eN','Enter your display name.');return;}
-  const r=loginAccount(n);
-  if(!r.ok){showErr('eN',r.msg);return;}
+async function doLogin(){const n=document.getElementById('n').value.trim(),pw=document.getElementById('p').value;
+  showErr('eN',n?'':'Enter your display name or student ID.');showErr('eP',pw?'':'Enter your password.');
+  if(!n||!pw)return;
+  const r=loginAccount(n,await sha256hex(pw));
+  if(!r.ok){showErr('eP',r.msg);return;}
   toast('Welcome back, '+n);setTimeout(()=>location.href='index.html',700);}
-function doRegister(){const n=document.getElementById('rN').value.trim(),id=document.getElementById('rId').value.trim();
+async function doRegister(){const n=document.getElementById('rN').value.trim(),id=document.getElementById('rId').value.trim(),pw=document.getElementById('rP').value,pc=document.getElementById('rPC').value;
   showErr('eRN',n?'':'Enter a display name.');showErr('eRId',id?'':'Enter your student ID.');
-  if(!n||!id)return;
-  const r=registerAccount(n,id);
+  showErr('eRP',pw.length>=8?'':'Password must be at least 8 characters.');showErr('eRPC',pw===pc?'':'Passwords do not match.');
+  if(!n||!id||pw.length<8||pw!==pc)return;
+  const r=registerAccount(n,id,await sha256hex(pw));
   if(!r.ok){showErr('eRN',r.msg);ltab('reg');return;}
   toast('Account created — welcome, '+n);setTimeout(()=>location.href='index.html',700);}
 document.getElementById('n').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+document.getElementById('p').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 document.getElementById('rId').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister();});
+document.getElementById('rPC').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister();});
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.1});
 document.querySelectorAll('[data-reveal]').forEach(el=>io.observe(el));
 paintSession();</script>

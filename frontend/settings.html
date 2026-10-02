@@ -17,6 +17,11 @@
 <label class="meta" for="sName">Display name *</label><input id="sName"><div class="err" id="eName"></div>
 <label class="meta" for="sId" style="margin-top:10px;display:block">Student ID *</label><input id="sId"><div class="err" id="eId"></div><br>
 <div class="modal-actions"><button class="btn" onclick="saveProfile()">Save changes</button></div></div>
+<div class="card" data-reveal style="margin-top:14px"><h2>Password</h2><p class="meta">Change the password used for your student login.</p><br>
+<label class="meta" for="curPw">Current password *</label><input id="curPw" type="password" autocomplete="current-password"><div class="err" id="eCurPw"></div>
+<label class="meta" for="newPw" style="margin-top:10px;display:block">New password *</label><input id="newPw" type="password" placeholder="Minimum 8 characters" autocomplete="new-password" minlength="8"><div class="err" id="eNewPw"></div>
+<label class="meta" for="confirmPw" style="margin-top:10px;display:block">Confirm new password *</label><input id="confirmPw" type="password" autocomplete="new-password" minlength="8"><div class="err" id="eConfirmPw"></div><br>
+<div class="modal-actions"><button class="btn" onclick="changePw()">Change password</button></div></div>
 <div class="card" data-reveal style="margin-top:14px"><h2>My permissions</h2><p class="meta">Granted by staff. Uploads need approval before going live.</p><div id="myPerms" style="margin-top:8px"></div></div>
 <div class="card" data-reveal style="margin-top:14px"><h2>Notifications</h2><p class="meta">Choose what lands in your 🔔 bell.</p>
 <div class="pref"><input type="checkbox" id="pUploads"><label for="pUploads">My uploads approved / removed</label></div>
@@ -60,6 +65,16 @@ function saveProfile(){
   if(n!==u.name){const r=renameMember(u.name,n);if(!r.ok){showErr('eName',r.msg);return;}}
   db=getDB();const acc=db.accounts.find(a=>a.name===n);if(acc){acc.sid=id;saveDB(db);}
   toast('Profile saved');paint();
+}
+async function changePw(){
+  const u=db.user;const cur=document.getElementById('curPw').value,nw=document.getElementById('newPw').value,cf=document.getElementById('confirmPw').value;
+  showErr('eCurPw',cur?'':'Enter your current password.');showErr('eNewPw',nw.length>=8?'':'New password must be at least 8 characters.');showErr('eConfirmPw',nw===cf?'':'Passwords do not match.');
+  if(!cur||nw.length<8||nw!==cf)return;
+  if(nw===cur){showErr('eNewPw','Choose a different password.');return;}
+  const r=changePassword(u.name,await sha256hex(cur),await sha256hex(nw));
+  if(!r.ok){showErr('eCurPw',r.msg);return;}
+  document.getElementById('curPw').value=document.getElementById('newPw').value=document.getElementById('confirmPw').value='';
+  toast('Password changed successfully');
 }
 function savePrefs(){
   const u=db.user.name;db=getDB();

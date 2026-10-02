@@ -152,18 +152,43 @@ function studentLogin(name){const db=getDB();db.user={name:name,role:'student'};
 function adminLogin(u,p){if(u===DEMO_ADMIN.username&&p===DEMO_ADMIN.password){const db=getDB();db.user={name:'Administrator',role:'admin'};saveDB(db);return true;}return false;}
 function logout(){const db=getDB();db.user=null;saveDB(db);}
 /* Accounts: guests must register before uploading, joining or chatting */
-function registerAccount(name,sid){
+/* Demo password hashing (static site only — real bcrypt lives server-side).
+   SHA-256 via WebCrypto; tiny sync fallback where SubtleCrypto is unavailable. */
+async function sha256hex(s){
+  try{
+    const d=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(String(s)));
+    return [...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){
+    let h1=0xdeadbeef,h2=0x41c6ce57;const str='uiu-dock:'+String(s);
+    for(let i=0;i<str.length;i++){const ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677);}
+    h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+    h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+    return (h2>>>0).toString(16).padStart(8,'0')+(h1>>>0).toString(16).padStart(8,'0');
+  }
+}
+function registerAccount(name,sid,ph){
   const db=getDB();name=(name||'').trim();sid=(sid||'').trim();
   if(!name||!sid)return {ok:false,msg:'Enter name and student ID.'};
+  if(!ph)return {ok:false,msg:'Choose a password (min 8 characters).'};
   if(db.accounts.some(a=>a.name.toLowerCase()===name.toLowerCase()))return {ok:false,msg:'That name already has an account — log in instead.'};
-  db.accounts.push({name,sid,created:new Date().toISOString()});
+  db.accounts.push({name,sid,ph,created:new Date().toISOString()});
   db.user={name,role:'student'};saveDB(db);return {ok:true};
 }
-function loginAccount(name){
+function loginAccount(name,ph){
   const db=getDB();name=(name||'').trim();
   const acc=db.accounts.find(a=>a.name.toLowerCase()===name.toLowerCase());
   if(!acc)return {ok:false,msg:'No account found for that name — create one first.'};
+  if(acc.ph){if(!ph||acc.ph!==ph)return {ok:false,msg:'Wrong password for that name.'};}
+  else if(ph){acc.ph=ph;saveDB(db);} /* legacy passwordless account adopts one on first login */
   db.user={name:acc.name,role:'student'};saveDB(db);return {ok:true};
+}
+function changePassword(name,currentPh,newPh){
+  const db=getDB();
+  const acc=db.accounts.find(a=>a.name===name);
+  if(!acc)return {ok:false,msg:'Account not found.'};
+  if(acc.ph&&acc.ph!==currentPh)return {ok:false,msg:'Current password is incorrect.'};
+  if(!newPh)return {ok:false,msg:'Enter a new password (min 8 characters).'};
+  acc.ph=newPh;saveDB(db);return {ok:true};
 }
 /* Gate for members-only actions: guests get a nudge + redirect */
 function requireAuth(msg){
