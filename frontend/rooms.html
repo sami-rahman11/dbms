@@ -28,9 +28,9 @@ db.courses.forEach(c=>{fc.innerHTML+=`<option>${c.code}</option>`;nc.innerHTML+=
 function render(){const q=document.getElementById('q').value.toLowerCase(),f=fc.value;
  const guest=!currentUser();
  let list=db.rooms.filter(r=>!f||r.c===f);if(q)list=list.filter(r=>(r.t+r.c+r.host).toLowerCase().includes(q));
- document.getElementById('grid').innerHTML=list.map(r=>{const full=r.joined>=r.cap;const empty=r.joined<=0;
+ document.getElementById('grid').innerHTML=list.map(r=>{const full=r.joined>=r.cap;
  const link=guest?'<span class="meta">🔒 Members only — log in to reveal link</span>':(r.link?`<a class="room-link" href="${escapeHTML(linkHref(r.link))}" target="_blank" rel="noopener">Join link</a>`:'<span class="meta">no link yet</span>');
- return `<div class="card p-room" data-reveal><span class="tag">${escapeHTML(r.c)}</span><h3>${escapeHTML(r.t)}</h3><div class="meta">Host ${escapeHTML(r.host)} • ${escapeHTML(r.when)} • ${escapeHTML(r.joined)}/${escapeHTML(r.cap)} joined • ${link}</div><div class="actions"><button class="btn small" ${full?'disabled':''} onclick="join(${r.id})">${full?'Full / Waitlist':'Join Room'}</button><button class="btn small ghost" ${empty?'disabled':''} onclick="leave(${r.id})">Leave</button><button class="btn small ghost" onclick="repRoom(${r.id})">Report</button></div></div>`;}).join('');
+ return `<div class="card p-room" data-reveal><span class="tag">${escapeHTML(r.c)}</span><h3>${escapeHTML(r.t)}</h3><div class="meta">Host ${escapeHTML(r.host)} • ${escapeHTML(r.when)} • ${escapeHTML(r.joined)}/${escapeHTML(r.cap)} joined • ${link}</div><div class="actions"><button class="btn small" ${full?'disabled':''} onclick="join(${r.id})">${full?'Full / Waitlist':'Join Room'}</button><button class="btn small ghost" onclick="repRoom(${r.id})">Report</button></div></div>`;}).join('');
  document.getElementById('empty').innerHTML=list.length?'':`<div class="empty"><h2>No rooms for this filter</h2><p>Be the first to host one — pick a course and schedule.</p><button class="btn" onclick="guardRoom()">+ Create Room</button></div>`;
  watchReveals();}
 document.getElementById('q').oninput=render;fc.onchange=render;
@@ -46,7 +46,6 @@ function doCreate(){const t=document.getElementById('nT').value.trim(),w=documen
  saveDB(db);closeModal();render();toast('Room created');}
 function guardRoom(){if(requireAuth('Create an account to host study rooms'))openModal();}
 function join(id){if(!requireAuth('Create an account to join study rooms'))return;const r=db.rooms.find(x=>x.id===id);if(r.joined<r.cap){r.joined++;saveDB(db);render();toast('Joined — attendance recorded');}else toast('Room full — added to waitlist (demo)');}
-function leave(id){const r=db.rooms.find(x=>x.id===id);if(r.joined>0)r.joined--;saveDB(db);render();}
 function repRoom(id){if(!requireAuth('Create an account to report content'))return;const r=db.rooms.find(x=>x.id===id);const reason=prompt('Report room "'+r.t+'" — reason?','Spam / wrong course / stale');if(reason===null)return;
  if(fileReport('room',{refId:id,label:r.t+' ('+r.c+')',reason:reason||'No reason given'}))toast('Reported — staff will review');}
 </script></body></html>

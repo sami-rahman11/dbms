@@ -31,6 +31,7 @@
 <label for="cTitle">Title *</label><input id="cTitle" placeholder="e.g. Machine Learning"><div class="err" id="eTitle"></div>
 <label for="cSem">Semester</label><input id="cSem" placeholder="e.g. Summer 2026" value="Summer 2026">
 <br><br><div class="modal-actions"><button class="btn" onclick="doAddCourse()">Add course</button> <button class="btn ghost" onclick="closeModal('cm')">Cancel</button></div></div></div>
+<div class="modal-bg" id="rateModal"><div class="modal rate-modal" role="dialog" aria-modal="true" aria-labelledby="rateTitle"><h2 id="rateTitle">Rate this resource</h2><p class="meta">Hover to preview, tap a star to choose, then confirm.</p><div class="big-stars" id="bigStars"><button class="big-star" data-n="1" onclick="ratePick(1)" onmouseover="rateHover(1)" onmouseout="rateHover(0)" aria-label="1 out of 5 stars">★</button><button class="big-star" data-n="2" onclick="ratePick(2)" onmouseover="rateHover(2)" onmouseout="rateHover(0)" aria-label="2 out of 5 stars">★</button><button class="big-star" data-n="3" onclick="ratePick(3)" onmouseover="rateHover(3)" onmouseout="rateHover(0)" aria-label="3 out of 5 stars">★</button><button class="big-star" data-n="4" onclick="ratePick(4)" onmouseover="rateHover(4)" onmouseout="rateHover(0)" aria-label="4 out of 5 stars">★</button><button class="big-star" data-n="5" onclick="ratePick(5)" onmouseover="rateHover(5)" onmouseout="rateHover(0)" aria-label="5 out of 5 stars">★</button></div><p class="rate-label" id="rateLabel">Select a rating</p><div class="modal-actions"><button class="btn" id="rateGo" onclick="confirmRate()" disabled>Confirm rating</button> <button class="btn ghost" onclick="closeModal('rateModal')">Cancel</button></div></div></div>
 <div class="footer">UIU Dock • Database Management System Lab • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="js/seed.js"></script><script src="js/store.js"></script>
 <script>document.documentElement.classList.add('js');
@@ -45,9 +46,9 @@ function render(){
  let list=db.resources.filter(r=>r.status==='approved');
  if(q)list=list.filter(r=>(r.t+r.c+r.by).toLowerCase().includes(q));
  if(f)list=list.filter(r=>r.c===f);if(ty)list=list.filter(r=>r.type===ty);
- list.sort((a,b)=>s==='dl'?b.dl-a.dl:b.rating-a.rating);
-  document.getElementById('grid').innerHTML=list.map(r=>{const rated=db.rated&&db.rated[r.id];
-  return `<div class="res-card ${tcls(r.type)}" data-reveal><div class="res-top"><span class="t-ico">${tico(r.type)}</span><div class="res-tags"><span class="tag">${escapeHTML(r.c)}</span><span class="tag">${escapeHTML(r.type)}</span></div><span class="ver">${escapeHTML(r.v)}</span></div><h3>${escapeHTML(r.t)}</h3><div class="res-by"><span class="avatar">${escapeHTML(r.by.trim().charAt(0).toUpperCase())}</span><span class="meta">by ${escapeHTML(r.by)}</span></div><div class="res-stats"><span class="gold">★ ${escapeHTML(r.rating)}</span><span>⬇ ${escapeHTML(r.dl)} downloads</span></div><div class="actions"><button class="btn small" onclick="dl(${r.id})">Download</button><button class="btn small ghost" ${rated?'disabled':''} onclick="rate(${r.id})">${rated?'★ Rated':'★ Rate'}</button><button class="btn small ghost" onclick="repRes(${r.id})">Report</button></div></div>`;}).join('');
+  list.sort((a,b)=>s==='dl'?b.dl-a.dl:davg(b)-davg(a));
+   document.getElementById('grid').innerHTML=list.map(r=>{const mine=myStars(r.id);
+  return `<div class="res-card ${tcls(r.type)}" data-reveal><div class="res-top"><span class="t-ico">${tico(r.type)}</span><div class="res-tags"><span class="tag">${escapeHTML(r.c)}</span><span class="tag">${escapeHTML(r.type)}</span></div><span class="ver">${escapeHTML(r.v)}</span></div><h3>${escapeHTML(r.t)}</h3><div class="res-by"><span class="avatar">${escapeHTML(r.by.trim().charAt(0).toUpperCase())}</span><span class="meta">by ${escapeHTML(r.by)}</span></div><div class="res-stats"><span class="gold">★ ${escapeHTML(davg(r).toFixed(1))}</span><span>⬇ ${escapeHTML(r.dl)} downloads</span></div><div class="actions"><button class="btn small" onclick="dl(${r.id})">Download</button><button class="btn small ghost" onclick="openRateModal(${r.id})">${mine?('★ '+mine+'/5'):'★ Rate'}</button><button class="btn small ghost" onclick="repRes(${r.id})">Report</button></div></div>`;}).join('');
  document.getElementById('empty').innerHTML=list.length?'':`<div class="empty"><h2>No resources found</h2><p>Try clearing filters — or upload the first one for this course.</p><button class="btn" onclick="guardUpload()">+ Upload Resource</button> <button class="btn ghost" onclick="clearF()">Clear filters</button></div>`;
  watchReveals();
 }
@@ -85,7 +86,14 @@ function doAddCourse(){
 function dl(id){if(!requireAuth('Create an account to download files'))return;const r=db.resources.find(x=>x.id===id);r.dl++;saveDB(db);render();toast('Download tracked: '+r.dl);}
 function repRes(id){if(!requireAuth('Create an account to report content'))return;const r=db.resources.find(x=>x.id===id);const reason=prompt('Report "'+r.t+'" — reason?','Outdated / wrong course / spam');if(reason===null)return;
  if(fileReport('resource',{refId:id,label:r.t+' ('+r.c+')',reason:reason||'No reason given'}))toast('Reported — staff will review');}
-function rate(id){if(!requireAuth('Create an account to rate resources'))return;db.rated=db.rated||{};if(db.rated[id])return toast('Already rated (demo: once per browser)');
-  const r=db.resources.find(x=>x.id===id);r.rating=Math.min(5,+(r.rating+0.1).toFixed(1));db.rated[id]=1;saveDB(db);render();toast('Thanks for rating');}
+/* 1-5 star ratings (demo): seed rating counts as 10 prior votes, your vote is the 11th */
+function myStars(id){const v=db.rated&&db.rated[id];if(v&&typeof v==='object')return v.s;if(v)return 5;return 0;}
+function davg(r){const m=myStars(r.id);if(!m)return +r.rating;const b=(db.rated[r.id]&&db.rated[r.id].b!=null)?db.rated[r.id].b:+r.rating;return Math.min(5,+(((b*10+m)/11).toFixed(1)));}
+let rateId=null,rateVal=0;const rateNames=['','Terrible','Poor','Average','Good','Excellent'];
+function paintBigStars(n){document.querySelectorAll('#bigStars .big-star').forEach(b=>b.classList.toggle('on',+b.dataset.n<=n));}
+function rateHover(n){const v=n||rateVal;paintBigStars(v);document.getElementById('rateLabel').textContent=v?(rateNames[v]+' ('+v+'/5)'):'Select a rating';}
+function ratePick(n){rateVal=n;paintBigStars(n);document.getElementById('rateLabel').textContent=rateNames[n]+' ('+n+'/5)';document.getElementById('rateGo').disabled=false;}
+function openRateModal(id){if(!requireAuth('Create an account to rate resources'))return;const r=db.resources.find(x=>x.id===id);rateId=id;rateVal=myStars(id);document.getElementById('rateTitle').textContent='Rate: '+r.t;document.getElementById('rateGo').disabled=!rateVal;paintBigStars(rateVal);document.getElementById('rateLabel').textContent=rateVal?(rateNames[rateVal]+' ('+rateVal+'/5)'):'Select a rating';openModal('rateModal',null);}
+function confirmRate(){if(!rateId||!rateVal)return;const r=db.resources.find(x=>x.id===rateId);db.rated=db.rated||{};const prev=db.rated[rateId];const base=(prev&&typeof prev==='object'&&prev.b!=null)?prev.b:+r.rating;db.rated[rateId]={s:rateVal,b:base};saveDB(db);closeModal('rateModal');render();toast('Thanks for rating '+rateVal+'/5');rateId=null;}
 
 </script></body></html>

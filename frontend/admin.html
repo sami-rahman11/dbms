@@ -70,6 +70,7 @@
 <div class="tbl-wrap"><table class="tbl"><caption>Contributors seen in demo data</caption><thead><tr><th scope="col">Name</th><th scope="col">Resources</th><th scope="col">Rooms</th><th scope="col">Msgs</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead><tbody id="userRows"></tbody></table></div>
 </section>
 </div></main>
+<div class="modal-bg" id="resolveModal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="rsTitle"><h2 id="rsTitle">Resolve report</h2><p class="meta" id="rsSummary"></p><div class="flag-quote" id="rsPreview"></div><label for="rsOutcome">Outcome * (verified action)</label><select id="rsOutcome"></select><label for="rsNote">Staff note (sent to the reporter)</label><input id="rsNote" placeholder="e.g. Removed — outdated syllabus version"><div class="pref"><input type="checkbox" id="rsCheck"><label for="rsCheck">I reviewed the reported content above</label></div><div class="err" id="rsErr"></div><div class="modal-actions"><button class="btn" onclick="confirmResolve()">Confirm resolution</button> <button class="btn ghost" onclick="closeModal('resolveModal')">Cancel</button></div></div></div>
 <div class="footer">UIU Dock • Staff Console • Team Baseline • Summer 2026</div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="js/seed.js"></script><script src="js/store.js"></script>
 <script>document.documentElement.classList.add('js');
@@ -164,11 +165,11 @@ function msgCard(course,m){
 function banUserMsg(course,id){const m=(db.msgs[course]||[]).find(x=>String(x.id)===String(id));if(!m)return;
   if(!confirm('Ban '+m.u+'? They lose upload/join/chat access.'))return;
   if(!db.suspended.includes(m.u))db.suspended.push(m.u);
-  logAudit('Banned user',m.u+' @ '+course);saveDB(db);renderAll();toast(m.u+' banned');}
+  audit('Banned user',m.u+' @ '+course);saveDB(db);renderAll();toast(m.u+' banned');}
 function muteUserMsg(course,id){const m=(db.msgs[course]||[]).find(x=>String(x.id)===String(id));if(!m)return;
   if(!confirm('Mute '+m.u+' for 7 days? They can read but not send.'))return;
-  muteUser(m.u,7);saveDB(db);renderAll();toast(m.u+' muted 7 days');}
-  document.getElementById('repRows').innerHTML=db.reports.map(r=>`<tr class="${r.status==='open'?'report-open':'report-done'}"><td>${escapeHTML(r.kind)}</td><td>${escapeHTML(r.label)}${r.course?' ('+escapeHTML(r.course)+')':''}</td><td>${escapeHTML(r.by)}</td><td>${escapeHTML(r.reason)}</td><td><span class="badge ${r.status==='open'?'pend':'ok'}">${escapeHTML(r.status)}</span></td><td class="mod-row">${r.status==='open'?`<button class="btn small" onclick="resolveRep('${r.id}')">Resolve</button>`:''}<button class="btn small ghost" onclick="delRep('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No reports. Students can file them from Resources, Rooms and Help Chats.</td></tr>';
+  db.muted=db.muted||{};db.muted[m.u]=Date.now()+7*864e5;audit('Muted user (7 days)',m.u+' @ '+course);saveDB(db);renderAll();toast(m.u+' muted 7 days');}
+  document.getElementById('repRows').innerHTML=db.reports.map(r=>`<tr class="${r.status==='open'?'report-open':'report-done'}"><td>${escapeHTML(r.kind)}</td><td>${escapeHTML(r.label)}${r.course?' ('+escapeHTML(r.course)+')':''}</td><td>${escapeHTML(r.by)}</td><td>${escapeHTML(r.reason)}</td><td><span class="badge ${r.status==='open'?'pend':'ok'}">${escapeHTML(r.status)}</span>${r.outcome?`<br><small class="meta">${escapeHTML(r.outcome)}</small>`:''}</td><td class="mod-row">${r.status==='open'?`<button class="btn small" onclick="openResolveModal('${r.id}')">Resolve</button>`:''}<button class="btn small ghost" onclick="delRep('${r.id}')">Delete</button></td></tr>`).join('')||'<tr><td colspan="6">No reports. Students can file them from Resources, Rooms and Help Chats.</td></tr>';
   const users=collectUsers();
   document.getElementById('userRows').innerHTML=users.map(u=>{const susp=db.suspended.includes(u.name);
     const up=canUpload(u.name),cp=canAddCourse(u.name);
@@ -179,14 +180,16 @@ function muteUserMsg(course,id){const m=(db.msgs[course]||[]).find(x=>String(x.i
 }
 function setPermU(name,kind){
   const now=kind==='upload'?canUpload(name):canAddCourse(name);
-  setPerm(name,kind,!now);saveDB(db);renderAll();
+  db.perms[kind]=db.perms[kind]||{};db.perms[kind][name]=!now;
+  audit((!now?'Granted ':'Revoked ')+(kind==='upload'?'upload permission':'course-add permission'),name);
+  saveDB(db);renderAll();
   toast((!now?'Granted ':'Revoked ')+name+' — '+(kind==='upload'?'uploads':'course adds'));
 }
 function adminAddCourse(){
   const code=document.getElementById('ncCode').value.trim().toUpperCase(),title=document.getElementById('ncTitle').value.trim(),sem=document.getElementById('ncSem').value.trim()||'Summer 2026';
   if(!code||!title){toast('Enter course code and title');return;}
   if(db.courses.some(c=>c.code.toLowerCase()===code.toLowerCase())){toast('That course already exists');return;}
-  db.courses.push({code,title,semester:sem});logAudit('Added course',code+' — '+title);saveDB(db);
+  db.courses.push({code,title,semester:sem});audit('Added course',code+' — '+title);saveDB(db);
   document.getElementById('ncCode').value='';document.getElementById('ncTitle').value='';
   renderAll();toast(code+' added');
 }
@@ -194,7 +197,7 @@ function delCourse(code){
   const uses=db.resources.filter(r=>r.c===code).length+db.rooms.filter(r=>r.c===code).length+(db.msgs[code]||[]).length;
   if(uses){toast('Course in use — remove its content first');return;}
   if(!confirm('Remove course '+code+'?'))return;
-  db.courses=db.courses.filter(c=>c.code!==code);logAudit('Removed course',code);saveDB(db);renderAll();toast(code+' removed');
+  db.courses=db.courses.filter(c=>c.code!==code);audit('Removed course',code);saveDB(db);renderAll();toast(code+' removed');
 }
 function collectUsers(){
   const map={};
@@ -251,33 +254,104 @@ function flagResolveGroup(g){g.items.forEach(r=>{const x=db.reports.find(y=>Stri
 function flagRemove(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
   if(!confirm('Remove this message from '+(g.course||'chat')+'?'))return;
   if(g.refId!=null&&db.msgs[g.course])db.msgs[g.course]=db.msgs[g.course].filter(x=>String(x.id)!==String(g.refId));
-  flagResolveGroup(g);logAudit('Removed flagged message',o.name+' @ '+(g.course||''));saveDB(db);renderAll();toast('Message removed');}
+  flagResolveGroup(g);audit('Removed flagged message',o.name+' @ '+(g.course||''));saveDB(db);renderAll();toast('Message removed');}
 function flagBan(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
   if(!confirm('Ban '+o.name+'? They lose upload/join/chat access.'))return;
   if(!db.suspended.includes(o.name))db.suspended.push(o.name);
-  flagResolveGroup(g);logAudit('Banned user',o.name+' @ '+(g.course||''));notify(o.name,'general','You were banned by staff — upload, join and chat are blocked','index.html');saveDB(db);renderAll();toast(o.name+' banned');}
+  flagResolveGroup(g);audit('Banned user',o.name+' @ '+(g.course||''));tell(o.name,'general','You were banned by staff — upload, join and chat are blocked','index.html');saveDB(db);renderAll();toast(o.name+' banned');}
 function flagMute(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
   if(!confirm('Mute '+o.name+' for 7 days? They can read but not send.'))return;
-  muteUser(o.name,7);flagResolveGroup(g);notify(o.name,'general','You were muted for 7 days by staff','help-desk.html');saveDB(db);renderAll();toast(o.name+' muted 7 days');}
+  db.muted=db.muted||{};db.muted[o.name]=Date.now()+7*864e5;audit('Muted user (7 days)',o.name+' @ '+(g.course||''));flagResolveGroup(g);tell(o.name,'general','You were muted for 7 days by staff','help-desk.html');saveDB(db);renderAll();toast(o.name+' muted 7 days');}
 function flagDismiss(i){const g=flagCache[i];if(!g)return;const o=offenderOf(g.items[0]);
-  flagResolveGroup(g);logAudit('Dismissed false alarm',o.name+' @ '+(g.course||''));[...new Set(g.items.map(r=>r.by))].forEach(b=>notify(b,'reports','Update: a report you filed was reviewed (no violation found)','help-desk.html'));saveDB(db);renderAll();toast('Dismissed as false alarm');}
+  flagResolveGroup(g);audit('Dismissed false alarm',o.name+' @ '+(g.course||''));[...new Set(g.items.map(r=>r.by))].forEach(b=>tell(b,'reports','Update: a report you filed was reviewed (no violation found)','help-desk.html'));saveDB(db);renderAll();toast('Dismissed as false alarm');}
 function linkByKind(kind){return {complaint:'complain.html',resource:'resources.html',room:'rooms.html',message:'help-desk.html'}[kind]||'index.html';}
-function ap(id){const r=db.resources.find(x=>x.id===id);if(!r)return;r.status='approved';logAudit('Approved resource',r.t+' ('+r.c+')');notify(r.by,'uploads','Approved: "'+r.t+'" is now live in '+r.c,'resources.html');saveDB(db);renderAll();toast('Approved');}
+function ap(id){const r=db.resources.find(x=>x.id===id);if(!r)return;r.status='approved';audit('Approved resource',r.t+' ('+r.c+')');tell(r.by,'uploads','Approved: "'+r.t+'" is now live in '+r.c,'resources.html');saveDB(db);renderAll();toast('Approved');}
 function askRj(id){const r=db.resources.find(x=>x.id===id);if(!r)return;if(!confirm('Reject and remove "'+r.t+'"?'))return;
-  db.resources=db.resources.filter(x=>x.id!==id);logAudit('Rejected resource',r.t+' ('+r.c+')');notify(r.by,'uploads','Not approved: "'+r.t+'" was rejected by staff','resources.html');saveDB(db);renderAll();toast('Rejected/removed');}
+  db.resources=db.resources.filter(x=>x.id!==id);audit('Rejected resource',r.t+' ('+r.c+')');tell(r.by,'uploads','Not approved: "'+r.t+'" was rejected by staff','resources.html');saveDB(db);renderAll();toast('Rejected/removed');}
 function delRes(id){const r=db.resources.find(x=>x.id===id);if(!r)return;if(!confirm('Remove "'+r.t+'" from the hub?'))return;
-  lastDeleted={type:'res',item:r};db.resources=db.resources.filter(x=>x.id!==id);logAudit('Removed resource',r.t);notify(r.by,'uploads','Removed by staff: "'+r.t+'"','resources.html');saveDB(db);renderAll();toast('Resource removed',undoDel);}
+  lastDeleted={type:'res',item:r};db.resources=db.resources.filter(x=>x.id!==id);audit('Removed resource',r.t);tell(r.by,'uploads','Removed by staff: "'+r.t+'"','resources.html');saveDB(db);renderAll();toast('Resource removed',undoDel);}
 function delRoom(id){const r=db.rooms.find(x=>x.id===id);if(!r)return;if(!confirm('Close room "'+r.t+'"? Members lose access.'))return;
-  lastDeleted={type:'room',item:r};db.rooms=db.rooms.filter(x=>x.id!==id);logAudit('Closed room',r.t+' ('+r.c+')');notify(r.host,'rooms','Closed by staff: "'+r.t+'"','rooms.html');saveDB(db);renderAll();toast('Room closed',undoDel);}
+  lastDeleted={type:'room',item:r};db.rooms=db.rooms.filter(x=>x.id!==id);audit('Closed room',r.t+' ('+r.c+')');tell(r.host,'rooms','Closed by staff: "'+r.t+'"','rooms.html');saveDB(db);renderAll();toast('Room closed',undoDel);}
 function delMsg(course,id){const list=db.msgs[course]||[];const m=list.find(x=>String(x.id)===String(id));if(!m)return;if(!confirm('Delete this message from '+course+'?'))return;
-  db.msgs[course]=list.filter(x=>String(x.id)!==String(id));logAudit('Removed message',m.u+' @ '+course);notify(m.u,'general','A message of yours in '+course+' was removed by staff','help-desk.html');saveDB(db);renderAll();toast('Message deleted');}
+  db.msgs[course]=list.filter(x=>String(x.id)!==String(id));audit('Removed message',m.u+' @ '+course);tell(m.u,'general','A message of yours in '+course+' was removed by staff','help-desk.html');saveDB(db);renderAll();toast('Message deleted');}
 function clearChat(course){if(!confirm('Clear ALL messages in '+course+'?'))return;
-  db.msgs[course]=[];logAudit('Cleared chat',course);saveDB(db);renderAll();toast('Chat cleared');}
-function resolveRep(id){const r=db.reports.find(x=>String(x.id)===String(id));if(r){r.status='resolved';logAudit('Resolved report',r.kind+': '+r.label);notify(r.by,'reports','Resolved: '+r.kind+' — '+r.label,linkByKind(r.kind));saveDB(db);renderAll();}}
+  db.msgs[course]=[];audit('Cleared chat',course);saveDB(db);renderAll();toast('Chat cleared');}
+/* Page-local audit/notify: append to the SAME db object, saved once by the caller.
+   (store.js logAudit()/notify() re-read storage, so mixing them with saveDB(db)
+   silently discards the audit rows and notifications just written.) */
+function stamp(){return new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
+function actor(){return (db.user&&db.user.name)||'Administrator';}
+function audit(action,target){db.audit=db.audit||[];db.audit.unshift({at:stamp(),by:actor(),action:action,target:target||''});db.audit=db.audit.slice(0,100);}
+function tell(name,type,text,link){db.notifs=db.notifs||[];db.notifs.unshift({id:'n'+Date.now()+Math.floor(Math.random()*999),for:name||null,type:type||'general',text:text,link:link||'',at:stamp(),readBy:[]});db.notifs=db.notifs.slice(0,80);}
+let rsId=null;
+function reportPreview(r){
+  if(r.kind==='resource'){const x=r.refId!=null?db.resources.find(y=>y.id===r.refId):null;
+    if(x)return '📦 '+x.t+' ('+x.c+' by '+x.by+', ⬇'+x.dl+' downloads)';
+    return r.label?('📦 Reported: '+r.label):'(target already removed)';}
+  if(r.kind==='room'){const x=r.refId!=null?db.rooms.find(y=>y.id===r.refId):null;
+    if(x)return '🏠 '+x.t+' ('+x.c+', host '+x.host+', '+x.joined+'/'+x.cap+' joined)';
+    return r.label?('🏠 Reported: '+r.label):'(target already closed)';}
+  if(r.kind==='message'){const m=r.refId!=null?(db.msgs[r.course]||[]).find(y=>String(y.id)===String(r.refId)):null;
+    if(m)return '💬 '+m.u+': "'+m.x+'"';
+    return r.label?('💬 Reported: '+r.label):'(target already removed)';}
+  return '📝 Complaint details: '+r.reason;
+}
+function resolveOptions(kind){
+  const o=[['dismiss','Dismiss — no violation found']];
+  if(kind==='resource')o.push(['remove','Remove the reported resource']);
+  if(kind==='room')o.push(['close','Close the reported room']);
+  if(kind==='message')o.push(['remove','Remove the reported message']);
+  if(kind==='complaint')o.push(['resolve','Mark resolved (reporter notified)']);
+  return o;
+}
+function openResolveModal(id){
+  const r=db.reports.find(x=>String(x.id)===String(id));if(!r||r.status!=='open')return;rsId=id;
+  document.getElementById('rsSummary').textContent=r.kind+' • '+r.label+' • reported by '+r.by+' • reason: "'+r.reason+'"';
+  document.getElementById('rsPreview').textContent=reportPreview(r);
+  document.getElementById('rsOutcome').innerHTML=resolveOptions(r.kind).map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('');
+  document.getElementById('rsNote').value='';document.getElementById('rsCheck').checked=false;showErr('rsErr','');
+  openModal('resolveModal');
+}
+function confirmResolve(){
+  const r=db.reports.find(x=>String(x.id)===String(rsId));if(!r)return;
+  const outcome=document.getElementById('rsOutcome').value;
+  const note=document.getElementById('rsNote').value.trim();
+  if(!document.getElementById('rsCheck').checked){showErr('rsErr','Confirm you reviewed the content first.');return;}
+  const actionLabel=(resolveOptions(r.kind).find(o=>o[0]===outcome)||[outcome,outcome])[1];
+  /* audit()/tell() are the page-level helpers above (single-copy save below) */
+  if(outcome==='remove'&&r.kind==='resource'){
+    const i=db.resources.findIndex(y=>y.id===r.refId);
+    if(i>-1){const t=db.resources[i];db.resources.splice(i,1);
+      tell(t.by,'uploads','Removed by staff: "'+t.t+'"'+(note?' — '+note:''),'resources.html');
+      audit('Removed reported resource',t.t+' ('+t.c+')');}
+    else toast('Target already gone — resolving report only');
+  }
+  if(outcome==='close'&&r.kind==='room'){
+    const i=db.rooms.findIndex(y=>y.id===r.refId);
+    if(i>-1){const t=db.rooms[i];db.rooms.splice(i,1);
+      tell(t.host,'rooms','Closed by staff: "'+t.t+'"'+(note?' — '+note:''),'rooms.html');
+      audit('Closed reported room',t.t+' ('+t.c+')');}
+    else toast('Target already gone — resolving report only');
+  }
+  if(outcome==='remove'&&r.kind==='message'){
+    const list=db.msgs[r.course]||[];const i=list.findIndex(y=>String(y.id)===String(r.refId));
+    if(i>-1){const t=list[i];list.splice(i,1);
+      tell(t.u,'general','A message of yours in '+r.course+' was removed by staff'+(note?' — '+note:''),'help-desk.html');
+      audit('Removed reported message',t.u+' @ '+r.course);}
+    else toast('Target already gone — resolving report only');
+  }
+  r.status=outcome==='dismiss'?'dismissed':'resolved';
+  r.outcome=actionLabel;r.note=note;
+  r.resolvedAt=stamp();
+  audit('Resolved report ('+actionLabel+')',r.kind+': '+r.label+(note?' — '+note:''));
+  tell(r.by,'reports',(outcome==='dismiss'?'No violation: ':'Resolved: ')+r.kind+' — '+r.label+(note?' ('+note+')':''),linkByKind(r.kind));
+  saveDB(db);closeModal('resolveModal');renderAll();paintNotifs();
+  toast('Report '+r.status+(outcome==='dismiss'?' (false alarm)':''));
+}
 function delRep(id){db.reports=db.reports.filter(x=>String(x.id)!==String(id));saveDB(db);renderAll();}
 function suspend(name){if(!confirm('Suspend '+name+'? They cannot upload, join or chat.'))return;
-  if(!db.suspended.includes(name))db.suspended.push(name);logAudit('Suspended user',name);notify(name,'general','Your account was suspended by staff','index.html');saveDB(db);renderAll();toast(name+' suspended');}
-function unsuspend(name){db.suspended=db.suspended.filter(x=>x!==name);logAudit('Reinstated user',name);notify(name,'general','Your account was reinstated — welcome back','index.html');saveDB(db);renderAll();toast(name+' reinstated');}
+  if(!db.suspended.includes(name))db.suspended.push(name);audit('Suspended user',name);tell(name,'general','Your account was suspended by staff','index.html');saveDB(db);renderAll();toast(name+' suspended');}
+function unsuspend(name){db.suspended=db.suspended.filter(x=>x!==name);audit('Reinstated user',name);tell(name,'general','Your account was reinstated — welcome back','index.html');saveDB(db);renderAll();toast(name+' reinstated');}
 function wipeUser(name){if(!confirm('Delete ALL content by '+name+' (resources, rooms, messages)?'))return;
   lastDeleted={type:'user',name,snapshot:JSON.stringify(db)};db.resources=db.resources.filter(r=>r.by!==name);
   db.rooms=db.rooms.filter(r=>r.host!==name);

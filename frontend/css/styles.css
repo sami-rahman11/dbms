@@ -485,3 +485,12 @@ html.js .page-hero{animation:page-in 480ms var(--ease) both}
   .scroll-progress{display:none}
   .hero-spot{display:none}
 }
+/* ---------- rating modal: Goodreads-style hover preview + labels ---------- */
+.rate-modal{text-align:center}
+.rate-modal .meta{text-align:center}
+.big-stars{display:flex;gap:8px;justify-content:center;margin:18px 0 8px}
+.big-star{background:#F1F2F9;border:1px solid var(--line);border-radius:13px;width:54px;height:54px;font-size:27px;line-height:1;color:#CBD0E4;cursor:pointer;transition:color 120ms var(--ease),background 120ms var(--ease),border-color 120ms var(--ease),transform 120ms var(--ease)}
+.big-star.on{background:linear-gradient(135deg,#FFF7E6,#FFE4BC);border-color:var(--peach-line);color:#EA580C;transform:scale(1.07)}
+.big-star:active{transform:scale(.96)}
+.rate-label{font-weight:700;font-size:15px;min-height:26px;color:var(--ink2)}
+.rate-modal .modal-actions{justify-content:center}
